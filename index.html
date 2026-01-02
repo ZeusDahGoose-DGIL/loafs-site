@@ -5,31 +5,52 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Loafs - Home</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 860px; margin: 32px auto; padding: 0 16px; }
-    nav a { margin-right: 12px; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; margin: 12px 0; }
-    .muted { opacity: .7; }
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 860px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+    nav a {
+      margin-right: 12px;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 14px;
+      margin: 12px 0;
+    }
+    .muted {
+      opacity: 0.7;
+    }
   </style>
 </head>
 <body>
+
   <h1>Loafs</h1>
 
+  <!-- ✅ CORRECT NAV FOR HOME PAGE -->
   <nav>
-    <a href="/">Home</a>
-    <a href="/leaderboard/">Leaderboard</a>
+    <a href="./">Home</a>
+    <a href="./leaderboard/">Leaderboard</a>
   </nav>
 
   <div class="card">
-    <h2>Point System</h2>
-    <p class="muted">This is the Loafs point system site. Leaderboard pulls from the database.</p>
-    <p>Next we’ll add Twitch login + “My Loafs” + redeem logic.</p>
+    <h2>What is Loafs?</h2>
+    <p class="muted">
+      Loafs is my custom point system. Points are stored in a database and shown on this site.
+    </p>
+    <p>
+      Twitch login, earning, and redeeming Loafs will be added next.
+    </p>
   </div>
 
   <div class="card">
     <h2>Pages</h2>
     <ul>
-      <li><a href="/leaderboard/">Leaderboard</a></li>
+      <li><a href="./leaderboard/">Leaderboard</a></li>
     </ul>
   </div>
+
 </body>
 </html>
