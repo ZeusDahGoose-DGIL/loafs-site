@@ -290,7 +290,7 @@
       board: currentBoard
     });
 
-    document.getElementById("meName").textContent = me.display_name + " (" + me.login + ")";
+    document.getElementById("meName").textContent = me.display_name;
     document.getElementById("mePoints").textContent = json.points ?? 0;
     document.getElementById("meRank").textContent = json.rank ? ("#" + json.rank) : "—";
     document.getElementById("meTotal").textContent = json.total ?? 0;
