@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Logging in…</title></head>
+<body>
+<script>
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const token = hash.get("access_token");
+  const state = hash.get("state");
+  const expected = sessionStorage.getItem("oauth_state");
+
+  if (token && state && expected && state === expected) {
+    sessionStorage.setItem("twitch_token", token);
+    location.href = location.origin + location.pathname.replace(/\/callback\.html$/, "/index.html");
+  } else {
+    document.body.textContent = "Login failed. Close this tab and try again.";
+  }
+</script>
+</body>
+</html>
