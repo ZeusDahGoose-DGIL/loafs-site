@@ -51,7 +51,7 @@
                 <div id="meRank" class="text-3xl font-extrabold">—</div>
               </div>
 
-              <!-- CURRENT BOARD POINTS (READ-ONLY ON GAME BOARDS) -->
+              <!-- CURRENT BOARD POINTS -->
               <div class="bg-base-300 rounded-xl p-3">
                 <div class="text-sm opacity-70">Points on this board</div>
                 <div id="meBoardPoints" class="text-2xl font-bold">0</div>
@@ -137,6 +137,7 @@
   const TWITCH_CLIENT_ID = "h450xh8v0w6osff946wcqnb8vr2st4";
   // ===============================
 
+  // Boards
   const BOARDS = [
     { id: "general", label: "Leaderboard (General)" },
     { id: "rivals2", label: "Rivals of Aether 2" },
@@ -146,11 +147,14 @@
   let currentBoard = localStorage.getItem("loaf_board") || BOARDS[0].id;
   const REDIRECT_URI = location.origin + location.pathname.replace(/\/[^\/]*$/, "/callback.html");
 
+  // Cache Twitch user
   let cachedMe = null;
 
+  // Pagination state
   const PAGE_SIZE = 12;
   let lbPage = 1;
 
+  // Leaderboard cache
   let lastLeaderboardHash = "";
   let lastLeaderboardData = [];
 
@@ -204,6 +208,7 @@
   document.getElementById("authBtn").onclick = () => {
     const token = getToken();
 
+    // Logout
     if (token) {
       sessionStorage.removeItem("twitch_token");
       cachedMe = null;
@@ -213,6 +218,7 @@
       return;
     }
 
+    // Login
     const state = crypto.getRandomValues(new Uint32Array(4)).join("-");
     sessionStorage.setItem("oauth_state", state);
 
@@ -259,6 +265,7 @@
     }[m]));
   }
 
+  // Read-only lookup (prevents auto-creating on game boards)
   function findUserInCurrentBoardById(twitchUserId) {
     const idx = (lastLeaderboardData || []).findIndex(p =>
       String(p.twitch_user_id || "") === String(twitchUserId || "")
@@ -299,7 +306,7 @@
       `;
     });
 
-    document.getElementById("lbPageInfo").textContent = \`Page \${lbPage} of \${totalPages}\`;
+    document.getElementById("lbPageInfo").textContent = `Page ${lbPage} of ${totalPages}`;
     document.getElementById("lbPrev").disabled = (lbPage <= 1);
     document.getElementById("lbNext").disabled = (lbPage >= totalPages);
   }
@@ -334,9 +341,8 @@
     }
   }
 
-  // ✅ Only auto-registers on GENERAL, always.
-  // ✅ Top box shows GENERAL points as "Loaf Points (current)" no matter what board you're viewing.
-  // ✅ Bottom "Total across boards" removed.
+  // Always registers wallet on GENERAL only.
+  // Top box shows GENERAL wallet points.
   async function refreshMe() {
     const token = getToken();
     if (!token) {
@@ -361,7 +367,6 @@
     setStatus("Loading your points…");
     let generalJson;
     try {
-      // Always call GENERAL only (wallet/register)
       generalJson = await apiGet("me", {
         twitch_user_id: me.id,
         twitch_login: me.login,
@@ -372,10 +377,10 @@
       generalJson = { points: 0, rank: null };
     }
 
-    // Top box: current total loaf points (GENERAL wallet)
+    // Wallet total
     document.getElementById("meTotalPoints").textContent = generalJson.points ?? 0;
 
-    // Board-specific display (read-only on game boards)
+    // Board-specific display
     if (currentBoard === "general") {
       document.getElementById("meBoardPoints").textContent = generalJson.points ?? 0;
       document.getElementById("meRank").textContent = generalJson.rank ? ("#" + generalJson.rank) : "—";
@@ -407,6 +412,7 @@
     await refreshLeaderboard();
     await refreshMe();
 
+    // auto-refresh leaderboard every 25s
     setInterval(refreshLeaderboard, 25000);
   })();
 </script>
