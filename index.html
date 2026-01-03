@@ -1,57 +1,254 @@
 <!doctype html>
-<html>
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Loafs - Home</title>
+  <title>Loaf Points</title>
 
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      max-width: 860px;
-      margin: 32px auto;
-      padding: 0 16px;
-    }
-    nav a {
-      margin-right: 12px;
-    }
-    .card {
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      padding: 14px;
-      margin: 12px 0;
-    }
-    .muted {
-      opacity: 0.7;
-    }
-  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.18/dist/full.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body>
 
-  <h1>Loafs</h1>
+<body class="bg-base-300 min-h-screen text-base-content">
+  <div class="max-w-3xl mx-auto p-6 space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-3xl font-bold">🍞 Loaf Points</h1>
+        <div class="opacity-70">Earn on Twitch • Spend here • Cause chaos 😈</div>
+      </div>
 
-  <!-- ✅ BULLETPROOF NAV FOR HOME -->
-  <nav>
-    <a href="./index.html">Home</a>
-    <a href="./leaderboard/index.html">Leaderboard</a>
-  </nav>
+      <div class="flex items-center gap-2">
+        <select id="boardSelect" class="select select-bordered">
+          <!-- Filled by JS -->
+        </select>
 
-  <div class="card">
-    <h2>What is Loafs?</h2>
-    <p class="muted">
-      Loafs is a custom point system stored in a database and shown on this site.
-    </p>
-    <p>
-      Twitch login, earning, and redeeming Loafs will be added next.
-    </p>
+        <button id="loginBtn" class="btn btn-primary">
+          <i class="fa-brands fa-twitch"></i> Login
+        </button>
+      </div>
+    </div>
+
+    <div id="meCard" class="card bg-base-200 shadow hidden">
+      <div class="card-body">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-sm opacity-70">Logged in as</div>
+            <div id="meName" class="text-xl font-bold"></div>
+            <div class="text-sm opacity-70">
+              Board rank: <span id="meRank"></span> • Total across boards: <span id="meTotal"></span>
+            </div>
+          </div>
+
+          <div class="text-right">
+            <div class="text-sm opacity-70">Your Loaf Points (this board)</div>
+            <div id="mePoints" class="text-4xl font-extrabold"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="redeemCard" class="card bg-base-200 shadow hidden">
+      <div class="card-body space-y-3">
+        <div class="text-xl font-bold">Spend Loaf Points</div>
+        <div class="grid sm:grid-cols-2 gap-2">
+          <button class="btn btn-secondary" onclick="spend('random_seed', 200)">🎲 Random Seeding (200)</button>
+          <button class="btn btn-secondary" onclick="spend('reroll_one_match', 75)">🔁 Reroll One Match (75)</button>
+          <button class="btn btn-secondary" onclick="spend('force_ruleset', 50)">📜 Force Ruleset (50)</button>
+          <button class="btn btn-secondary" onclick="spend('highlight_me', 25)">📣 Highlight Me (25)</button>
+        </div>
+        <div id="redeemMsg" class="text-sm opacity-80"></div>
+      </div>
+    </div>
+
+    <div class="card bg-base-200 shadow">
+      <div class="card-body">
+        <div class="flex items-center justify-between">
+          <div class="text-xl font-bold">Leaderboard</div>
+          <div id="updated" class="text-sm opacity-70"></div>
+        </div>
+        <div id="lb" class="mt-3 space-y-2"></div>
+      </div>
+    </div>
   </div>
 
-  <div class="card">
-    <h2>Pages</h2>
-    <ul>
-      <li><a href="./leaderboard/index.html">Leaderboard</a></li>
-    </ul>
-  </div>
+<script>
+  // ====== REQUIRED SETTINGS ======
+  const API_BASE = "https://script.google.com/macros/s/AKfycbwg_pn2J8399br-rnzHT36BG2JtIgB1nPEfya9PTV9TD__kwidzJUZZqRfb-o7I5baHkA/exec";
+  const TWITCH_CLIENT_ID = "PASTE_YOUR_TWITCH_CLIENT_ID_HERE";
+  // ===============================
 
+  // Leaderboards (edit these)
+  const BOARDS = [
+    { id: "general", label: "General (All Points)" },
+    { id: "rivals2", label: "Rivals of Aether 2" },
+    { id: "melee", label: "Melee" }
+  ];
+
+  let currentBoard = localStorage.getItem("loaf_board") || BOARDS[0].id;
+
+  const REDIRECT_URI = location.origin + location.pathname.replace(/\/[^\/]*$/, "/callback.html");
+
+  function setToken(t){ sessionStorage.setItem("twitch_token", t); }
+  function getToken(){ return sessionStorage.getItem("twitch_token"); }
+
+  function buildBoardsUI() {
+    const sel = document.getElementById("boardSelect");
+    sel.innerHTML = "";
+    for (const b of BOARDS) {
+      const opt = document.createElement("option");
+      opt.value = b.id;
+      opt.textContent = b.label;
+      if (b.id === currentBoard) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.onchange = async () => {
+      currentBoard = sel.value;
+      localStorage.setItem("loaf_board", currentBoard);
+      await refreshLeaderboard();
+      await refreshMe();
+    };
+  }
+
+  document.getElementById("loginBtn").onclick = () => {
+    const state = crypto.getRandomValues(new Uint32Array(4)).join("-");
+    sessionStorage.setItem("oauth_state", state);
+
+    const url = new URL("https://id.twitch.tv/oauth2/authorize");
+    url.searchParams.set("client_id", TWITCH_CLIENT_ID);
+    url.searchParams.set("redirect_uri", REDIRECT_URI);
+    url.searchParams.set("response_type", "token");
+    url.searchParams.set("state", state);
+    location.href = url.toString();
+  };
+
+  async function twitchGetMe() {
+    const token = getToken();
+    if (!token) return null;
+
+    const res = await fetch("https://api.twitch.tv/helix/users", {
+      headers: {
+        "Client-Id": TWITCH_CLIENT_ID,
+        "Authorization": "Bearer " + token
+      }
+    });
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    return json.data && json.data[0] ? json.data[0] : null;
+  }
+
+  async function apiGet(route, params={}) {
+    const url = new URL(API_BASE);
+    url.searchParams.set("route", route);
+    for (const [k,v] of Object.entries(params)) url.searchParams.set(k, v);
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    return await res.json();
+  }
+
+  async function apiPost(route, body) {
+    const res = await fetch(API_BASE + "?route=" + encodeURIComponent(route), {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify(body)
+    });
+    return await res.json();
+  }
+
+  async function refreshLeaderboard() {
+    const json = await apiGet("leaderboard", { board: currentBoard });
+    document.getElementById("updated").textContent =
+      json.updated ? ("Updated: " + json.updated) : "";
+
+    const el = document.getElementById("lb");
+    el.innerHTML = "";
+
+    (json.data || []).slice(0, 50).forEach((p, i) => {
+      let icon = "fa-user", extra = "";
+      if (i === 0) { icon = "fa-crown"; extra = "text-yellow-400"; }
+      else if (i === 1) { icon = "fa-medal"; extra = "text-gray-300"; }
+      else if (i === 2) { icon = "fa-medal"; extra = "text-orange-400"; }
+
+      el.innerHTML += `
+        <div class="flex items-center justify-between bg-base-300 rounded-xl px-4 py-3">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid ${icon} ${extra}"></i>
+            <div class="font-bold">#${i+1}</div>
+            <div>${escapeHtml(p.display_name || p.twitch_login || "")}</div>
+          </div>
+          <div class="badge badge-primary text-lg">${p.points}</div>
+        </div>
+      `;
+    });
+  }
+
+  async function refreshMe() {
+    const me = await twitchGetMe();
+    if (!me) return;
+
+    const json = await apiGet("me", {
+      twitch_user_id: me.id,
+      twitch_login: me.login,
+      display_name: me.display_name,
+      board: currentBoard
+    });
+
+    document.getElementById("meName").textContent = me.display_name + " (" + me.login + ")";
+    document.getElementById("mePoints").textContent = json.points ?? 0;
+    document.getElementById("meRank").textContent = json.rank ? ("#" + json.rank) : "—";
+    document.getElementById("meTotal").textContent = json.total ?? 0;
+
+    document.getElementById("meCard").classList.remove("hidden");
+    document.getElementById("redeemCard").classList.remove("hidden");
+  }
+
+  window.spend = async function(action, cost) {
+    const token = getToken();
+    if (!token) {
+      document.getElementById("redeemMsg").textContent = "Please login first.";
+      return;
+    }
+
+    const me = await twitchGetMe();
+    if (!me) {
+      document.getElementById("redeemMsg").textContent = "Login expired — click Login again.";
+      return;
+    }
+
+    document.getElementById("redeemMsg").textContent = "Submitting…";
+
+    const resp = await apiPost("spend", {
+      twitch_token: token,
+      twitch_user_id: me.id,
+      twitch_login: me.login,
+      display_name: me.display_name,
+      action,
+      cost,
+      board: currentBoard
+    });
+
+    if (!resp.ok) {
+      document.getElementById("redeemMsg").textContent = resp.error || "Failed.";
+      return;
+    }
+
+    document.getElementById("redeemMsg").textContent = `✅ Redeemed ${action} (-${cost}) on ${currentBoard}!`;
+    await refreshMe();
+    await refreshLeaderboard();
+  }
+
+  function escapeHtml(s){
+    return String(s ?? "").replace(/[&<>"']/g, m => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[m]));
+  }
+
+  (async function init(){
+    buildBoardsUI();
+    await refreshLeaderboard();
+    setInterval(refreshLeaderboard, 5000);
+    if (getToken()) await refreshMe();
+  })();
+</script>
 </body>
 </html>
