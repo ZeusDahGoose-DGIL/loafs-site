@@ -149,7 +149,7 @@
                   </div>
                 </div>
 
-                <div id="pollTitle" class="text-2xl font-extrabold">Secret Poll for Silly Stuff Soon</div>
+                <div id="pollTitle" class="text-2xl font-extrabold">Loading...</div>
                 <div id="pollSubtitle" class="text-sm opacity-70"></div>
               </div>
 
@@ -581,7 +581,7 @@ async function vote(character_id){
     if (res.poll && res.poll.ok) {
       pollCache = res.poll;
       setPollBadge(!!pollCache.is_open);
-      $("pollTitle").textContent = pollCache.title || "Secret Poll for Silly Stuff Soon";
+      $("pollTitle").textContent = pollCache.title || "Loading...";
       $("pollSubtitle").textContent = pollCache.subtitle || "";
       renderTopBadges(pollCache.top || []);
       renderPollTotals();
