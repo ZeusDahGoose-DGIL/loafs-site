@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" href="assets/favicon.png">
 
   <style>
-    /* small, lightweight "loaf toss" animation layer (auto-cleans, won't lag) */
+    /* FX layer for loaf toss */
     #fxLayer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 9999; }
     .crumb {
       position: absolute;
@@ -25,7 +25,6 @@
     @keyframes fly {
       to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)); opacity: 0; }
     }
-    .charRow:hover { outline: 2px solid rgba(255,255,255,.07); }
   </style>
 </head>
 
@@ -112,7 +111,7 @@
         </div>
       </div>
 
-      <!-- CENTER COLUMN -->
+      <!-- CENTER -->
       <div class="lg:col-span-6 space-y-4">
 
         <!-- LEADERBOARD -->
@@ -137,13 +136,21 @@
           </div>
         </div>
 
-        <!-- POLL (NEW) -->
+        <!-- POLL -->
         <div class="card bg-base-200 shadow">
           <div class="card-body">
-            <div class="flex items-start justify-between gap-3 flex-wrap">
-              <div>
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div class="flex flex-col gap-2">
+
+                <!-- OPEN/CLOSED badge -->
+                <div id="pollBadgeWrap" class="inline-flex items-center">
+                  <div id="pollBadge" class="px-3 py-1 rounded-xl border text-sm font-bold tracking-wide">
+                    …
+                  </div>
+                </div>
+
                 <div id="pollTitle" class="text-2xl font-extrabold">Secret Poll for Silly Stuff Soon</div>
-                <div id="pollSubtitle" class="text-sm opacity-70 mt-1"></div>
+                <div id="pollSubtitle" class="text-sm opacity-70"></div>
               </div>
 
               <div class="flex items-center gap-2">
@@ -155,7 +162,7 @@
             <div id="pollMsg" class="text-sm mt-2 opacity-80"></div>
 
             <div class="mt-4">
-              <div class="text-sm opacity-70 mb-2">Current Top 3</div>
+              <div class="text-sm opacity-70 mb-2">Current Top Bans</div>
               <div id="pollTop" class="flex flex-wrap gap-2"></div>
             </div>
 
@@ -163,6 +170,18 @@
               <div class="text-sm opacity-70 mb-2">Totals</div>
               <div id="pollTotals" class="space-y-2"></div>
             </div>
+
+            <!-- poll pagination -->
+            <div class="mt-4 flex items-center justify-between">
+              <button id="pollPrev" class="btn btn-sm btn-outline" disabled>
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <div id="pollPageInfo" class="text-sm opacity-70">Page 1 of 1</div>
+              <button id="pollNext" class="btn btn-sm btn-outline" disabled>
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+
           </div>
         </div>
 
@@ -202,8 +221,6 @@
 /** ====== CONFIG ====== **/
 const API_BASE = "https://script.google.com/macros/s/AKfycbwg_pn2J8399br-rnzHT36BG2JtIgB1nPEfya9PTV9TD__kwidzJUZZqRfb-o7I5baHkA/exec";
 const TWITCH_CLIENT_ID = "h450xh8v0w6osff946wcqnb8vr2st4";
-
-/** IMPORTANT: set this to whatever your PollConfig / PollOptions rows use */
 const TOURNAMENT_ID = "DGIL_NEXT";
 
 /** Boards shown in dropdown **/
@@ -225,13 +242,21 @@ let lbPage = 1;
 let lastLeaderboardData = [];
 let lastLeaderboardHash = "";
 
+const POLL_PAGE_SIZE = 5;
+let pollPage = 1;
+let pollCache = null;
+
 /** ====== HELPERS ====== **/
 const $ = (id) => document.getElementById(id);
 const getToken = () => sessionStorage.getItem("twitch_token");
 
-function setStatus(msg) {
-  $("status").textContent = msg || "";
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (m) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[m]));
 }
+
+function setStatus(msg) { $("status").textContent = msg || ""; }
 
 function updateAuthButtonUI() {
   const hasToken = !!getToken();
@@ -240,18 +265,12 @@ function updateAuthButtonUI() {
   $("authBtn").classList.toggle("btn-primary", !hasToken);
 }
 
-/** DO NOT CHANGE: your top 1/2/3 icons stay exactly as you had them */
+// KEEP your leaderboard icons exactly as you had them
 function topIcon(rank) {
   if (rank === 1) return '<i class="fa-solid fa-crown text-yellow-400"></i>';
   if (rank === 2) return '<i class="fa-solid fa-medal text-gray-300"></i>';
   if (rank === 3) return '<i class="fa-solid fa-medal text-orange-400"></i>';
   return '<i class="fa-solid fa-user opacity-60"></i>';
-}
-
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (m) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  }[m]));
 }
 
 function apiGet(route, params = {}) {
@@ -261,10 +280,10 @@ function apiGet(route, params = {}) {
   return fetch(u.toString(), { cache: "no-store" }).then(r => r.json());
 }
 
-function apiPost(json) {
+function apiPost(json){
   return fetch(API_BASE, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
     body: JSON.stringify(json)
   }).then(r => r.json());
 }
@@ -272,6 +291,32 @@ function apiPost(json) {
 function uuid(){
   if (crypto && crypto.randomUUID) return crypto.randomUUID();
   return String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+}
+
+/** ====== LOAF FX ====== **/
+function throwLoafs(){
+  const layer = document.getElementById("fxLayer");
+  const count = 14;
+  const x = window.innerWidth * 0.5;
+  const y = window.innerHeight * 0.25;
+
+  for (let i=0;i<count;i++){
+    const el = document.createElement("div");
+    el.className = "crumb";
+    el.textContent = "🍞";
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+
+    const dx = (Math.random()*260 - 130) + "px";
+    const dy = (Math.random()*220 - 220) + "px";
+    const rot = (Math.random()*240 - 120) + "deg";
+    el.style.setProperty("--dx", dx);
+    el.style.setProperty("--dy", dy);
+    el.style.setProperty("--rot", rot);
+
+    layer.appendChild(el);
+    setTimeout(() => el.remove(), 750);
+  }
 }
 
 /** ====== LEADERBOARD ====== **/
@@ -365,7 +410,6 @@ async function refreshMe() {
 
     $("meName").textContent = me.display_name;
 
-    // Always ensure + read GENERAL (even if viewing another board)
     const g = await apiGet("me", {
       twitch_user_id: me.id,
       twitch_login: me.login,
@@ -383,6 +427,171 @@ async function refreshMe() {
     $("meCard").classList.add("hidden");
     $("loginHint").classList.remove("hidden");
     setStatus("Could not load account info. Try logging out and back in.");
+  }
+}
+
+/** ====== POLL ====== **/
+function setPollBadge(isOpen){
+  const el = $("pollBadge");
+  if (isOpen) {
+    el.textContent = "OPEN";
+    el.className = "px-3 py-1 rounded-xl border border-green-500 text-green-400 text-sm font-bold tracking-wide";
+  } else {
+    el.textContent = "CLOSED";
+    el.className = "px-3 py-1 rounded-xl border border-red-500 text-red-400 text-sm font-bold tracking-wide";
+  }
+}
+
+function setPollMsg(msg, isErr=false){
+  $("pollMsg").textContent = msg || "";
+  $("pollMsg").classList.toggle("text-error", !!isErr);
+}
+
+function renderTopBadges(names){
+  const wrap = $("pollTop");
+  wrap.innerHTML = "";
+  if (!names || !names.length) {
+    wrap.innerHTML = `<span class="opacity-70">—</span>`;
+    return;
+  }
+  names.slice(0,3).forEach((n, i) => {
+    const badge = document.createElement("div");
+    badge.className = "badge badge-error badge-lg gap-2";
+    badge.textContent = `#${i+1} ${n}`;
+    wrap.appendChild(badge);
+  });
+}
+
+function renderPollTotals(){
+  const wrap = $("pollTotals");
+  wrap.innerHTML = "";
+
+  const options = (pollCache && pollCache.options) ? pollCache.options : [];
+  const pages = Math.max(1, Math.ceil(options.length / POLL_PAGE_SIZE));
+  pollPage = Math.min(Math.max(1, pollPage), pages);
+
+  const start = (pollPage - 1) * POLL_PAGE_SIZE;
+  const slice = options.slice(start, start + POLL_PAGE_SIZE);
+
+  const maxPts = Math.max(1, ...options.map(o => o.points || 0));
+
+  slice.forEach(o => {
+    const pct = Math.round(((o.points || 0) / maxPts) * 100);
+    const icon = o.icon_path || "";
+
+    wrap.innerHTML += `
+      <div class="flex items-center justify-between bg-base-300 rounded-xl px-3 py-3 gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="${escapeHtml(icon)}" onerror="this.style.display='none'"
+               class="w-10 h-10 rounded-xl object-cover bg-base-200" alt="">
+          <div class="min-w-0">
+            <div class="font-bold truncate">${escapeHtml(o.character_name)}</div>
+            <div class="w-56 max-w-[50vw] bg-base-200 rounded-full h-2 mt-2 overflow-hidden">
+              <div class="h-2 bg-primary" style="width:${pct}%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <div class="badge badge-secondary text-lg">${o.points || 0}</div>
+          <button class="btn btn-sm btn-outline" data-cid="${escapeHtml(o.character_id)}">Vote</button>
+        </div>
+      </div>
+    `;
+  });
+
+  $("pollPageInfo").textContent = `Page ${pollPage} of ${pages}`;
+  $("pollPrev").disabled = pollPage <= 1;
+  $("pollNext").disabled = pollPage >= pages;
+
+  // wire vote buttons
+  wrap.querySelectorAll("button[data-cid]").forEach(btn=>{
+    btn.onclick = () => vote(btn.getAttribute("data-cid"));
+  });
+}
+
+async function refreshPoll(){
+  const j = await apiGet("poll", { tournament_id: TOURNAMENT_ID });
+  if (!j.ok){
+    setPollMsg(j.error || "Could not load poll.", true);
+    return;
+  }
+  pollCache = j;
+
+  setPollBadge(!!j.is_open);
+  $("pollTitle").textContent = j.title || "Secret Poll for Silly Stuff Soon";
+  $("pollSubtitle").textContent = j.subtitle || "";
+  renderTopBadges(j.top || []);
+  renderPollTotals();
+  setPollMsg("");
+}
+
+let voteBusy = false;
+
+async function vote(character_id){
+  if (voteBusy) return;
+  if (!getToken()){
+    setPollMsg("Login with Twitch first.", true);
+    return;
+  }
+
+  const amt = parseInt($("voteAmount").value, 10);
+  if (!Number.isFinite(amt) || amt <= 0){
+    setPollMsg("Enter an amount (example: 25).", true);
+    return;
+  }
+
+  if (pollCache && pollCache.is_open === false){
+    setPollMsg("Poll is closed.", true);
+    return;
+  }
+
+  voteBusy = true;
+  setPollMsg("Submitting vote…");
+
+  try{
+    const res = await apiPost({
+      route: "vote",
+      tournament_id: TOURNAMENT_ID,
+      character_id,
+      amount: amt,
+      token: getToken(),
+      spend_id: uuid()
+    });
+
+    if (!res.ok){
+      if (res.current_points !== undefined){
+        setPollMsg(`Not enough Loaf Points. You have ${res.current_points}.`, true);
+      } else if (res.error === "poll_closed") {
+        setPollMsg("Poll is closed.", true);
+      } else {
+        setPollMsg(res.error || "Vote failed.", true);
+      }
+      return;
+    }
+
+    if (!res.deduped) {
+      throwLoafs();
+      setPollMsg("Vote counted! 🍞");
+    } else {
+      setPollMsg("Already processed (safe double-click protection).");
+    }
+
+    // update from returned poll payload
+    if (res.poll && res.poll.ok) {
+      pollCache = res.poll;
+      setPollBadge(!!pollCache.is_open);
+      $("pollTitle").textContent = pollCache.title || "Secret Poll for Silly Stuff Soon";
+      $("pollSubtitle").textContent = pollCache.subtitle || "";
+      renderTopBadges(pollCache.top || []);
+      renderPollTotals();
+    } else {
+      await refreshPoll();
+    }
+
+    await refreshMe();
+  } finally {
+    voteBusy = false;
   }
 }
 
@@ -432,189 +641,8 @@ $("authBtn").onclick = () => {
 $("lbPrev").onclick = () => { lbPage--; renderLeaderboard(); };
 $("lbNext").onclick = () => { lbPage++; renderLeaderboard(); };
 
-/** ====== POLL (NEW) ====== **/
-let pollCache = null;
-let voteBusy = false;
-
-function setPollMsg(msg, isErr=false){
-  $("pollMsg").textContent = msg || "";
-  $("pollMsg").classList.toggle("text-error", !!isErr);
-}
-
-function renderTopBadges(names){
-  const wrap = $("pollTop");
-  wrap.innerHTML = "";
-  if (!names || !names.length){
-    wrap.innerHTML = `<span class="opacity-70">—</span>`;
-    return;
-  }
-  names.slice(0,3).forEach((n, i) => {
-    const badge = document.createElement("div");
-    badge.className = "badge badge-error badge-lg gap-2";
-    badge.textContent = `#${i+1} ${n}`;
-    wrap.appendChild(badge);
-  });
-}
-
-function renderPollTotals(options){
-  const wrap = $("pollTotals");
-  wrap.innerHTML = "";
-
-  if (!options || !options.length){
-    wrap.innerHTML = `<div class="opacity-70 text-sm">No options found.</div>`;
-    return;
-  }
-
-  // Sort by points high->low so highest appears top
-  const sorted = [...options].sort((a,b)=> (b.points||0) - (a.points||0));
-  const maxPts = Math.max(1, ...sorted.map(o => o.points || 0));
-
-  sorted.forEach(o => {
-    const pct = Math.round(((o.points || 0) / maxPts) * 100);
-    wrap.innerHTML += `
-      <div class="charRow flex items-center justify-between bg-base-300 rounded-xl px-3 py-3 gap-3">
-        <div class="flex items-center gap-3 min-w-0">
-          <img src="${escapeHtml(o.icon_path || "")}"
-               onerror="this.style.display='none'"
-               class="w-10 h-10 rounded-xl object-cover bg-base-200"
-               alt="">
-          <div class="min-w-0">
-            <div class="font-bold truncate">${escapeHtml(o.character_name)}</div>
-            <div class="w-56 max-w-[50vw] bg-base-200 rounded-full h-2 mt-2 overflow-hidden">
-              <div class="h-2 bg-primary" style="width:${pct}%;"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <div class="badge badge-secondary text-lg">${o.points || 0}</div>
-          <button class="btn btn-sm btn-outline" onclick="vote('${escapeHtml(o.character_id)}')">Vote</button>
-        </div>
-      </div>
-    `;
-  });
-}
-
-function throwLoafs(){
-  const layer = $("fxLayer");
-  const count = 14;
-  const x = window.innerWidth * 0.5;
-  const y = window.innerHeight * 0.35;
-
-  for (let i=0;i<count;i++){
-    const el = document.createElement("div");
-    el.className = "crumb";
-    el.textContent = "🍞";
-    el.style.left = x + "px";
-    el.style.top = y + "px";
-
-    const dx = (Math.random()*260 - 130) + "px";
-    const dy = (Math.random()*220 - 220) + "px";
-    const rot = (Math.random()*240 - 120) + "deg";
-    el.style.setProperty("--dx", dx);
-    el.style.setProperty("--dy", dy);
-    el.style.setProperty("--rot", rot);
-
-    layer.appendChild(el);
-    setTimeout(() => el.remove(), 750);
-  }
-}
-
-async function refreshPoll(){
-  // Your backend should support route=poll&tournament_id=...
-  const j = await apiGet("poll", { tournament_id: TOURNAMENT_ID });
-
-  // allow fallback message if not set up yet
-  if (!j || j.ok === false){
-    setPollMsg(j?.error || "Poll not available yet (backend route missing).", true);
-    $("pollSubtitle").textContent = "";
-    renderTopBadges([]);
-    renderPollTotals([]);
-    return;
-  }
-
-  pollCache = j;
-
-  // Keep your requested headline unless you want it overwritten by sheet config.
-  // If your backend returns title/subtitle, we show subtitle but keep the main title text.
-  $("pollSubtitle").textContent = j.subtitle || "";
-
-  renderTopBadges(j.top || []);
-  renderPollTotals(j.options || []);
-
-  if (j.is_open === false){
-    setPollMsg("Poll is CLOSED.", true);
-  } else {
-    setPollMsg("Poll is OPEN.");
-  }
-}
-
-async function vote(character_id){
-  if (voteBusy) return;
-
-  if (!getToken()){
-    setPollMsg("Login with Twitch first.", true);
-    return;
-  }
-
-  const amt = parseInt($("voteAmount").value, 10);
-  if (!Number.isFinite(amt) || amt <= 0){
-    setPollMsg("Enter an amount (example: 25).", true);
-    return;
-  }
-
-  if (pollCache && pollCache.is_open === false){
-    setPollMsg("Poll is closed.", true);
-    return;
-  }
-
-  voteBusy = true;
-  setPollMsg("Submitting vote…");
-
-  try{
-    // Your backend should support POST {route:"vote", tournament_id, character_id, amount, token, spend_id}
-    const res = await apiPost({
-      route: "vote",
-      tournament_id: TOURNAMENT_ID,
-      character_id,
-      amount: amt,
-      token: getToken(),
-      spend_id: uuid()
-    });
-
-    if (!res || res.ok === false){
-      if (res && res.current_points !== undefined){
-        setPollMsg(`Not enough Loaf Points. You have ${res.current_points}.`, true);
-      } else {
-        setPollMsg(res?.error || "Vote failed.", true);
-      }
-      return;
-    }
-
-    if (res.deduped){
-      setPollMsg("Already processed (safe double-click protection).");
-    } else {
-      setPollMsg("Vote counted! 🍞");
-      throwLoafs();
-    }
-
-    // If backend returns updated poll, apply it; otherwise just refresh.
-    if (res.poll && res.poll.ok){
-      pollCache = res.poll;
-      $("pollSubtitle").textContent = res.poll.subtitle || "";
-      renderTopBadges(res.poll.top || []);
-      renderPollTotals(res.poll.options || []);
-    } else {
-      await refreshPoll();
-    }
-
-    // refresh your “me” so points update after spend
-    await refreshMe();
-  } finally {
-    voteBusy = false;
-  }
-}
-
+$("pollPrev").onclick = () => { pollPage--; renderPollTotals(); };
+$("pollNext").onclick = () => { pollPage++; renderPollTotals(); };
 $("pollRefreshBtn").onclick = () => refreshPoll();
 
 /** ====== Init ====== **/
@@ -623,17 +651,10 @@ $("pollRefreshBtn").onclick = () => refreshPoll();
   buildBoards();
   await refreshLeaderboard({quietIfUnchanged:false});
   await refreshMe();
-
-  // NEW: poll load
   await refreshPoll();
 
-  // Refresh leaderboard every 25s without spamming "Loading..."
   setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
-
-  // Refresh "me" occasionally so points update after redeems/spends
   setInterval(() => refreshMe(), 30000);
-
-  // Refresh poll occasionally
   setInterval(() => refreshPoll(), 30000);
 })();
 </script>
