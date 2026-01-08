@@ -519,7 +519,7 @@ async function refreshPoll(){
   pollCache = j;
 
   setPollBadge(!!j.is_open);
-  $("pollTitle").textContent = j.title || "Secret Poll for Silly Stuff Soon";
+  $("pollTitle").textContent = j.title || "Loading...";
   $("pollSubtitle").textContent = j.subtitle || "";
   renderTopBadges(j.top || []);
   renderPollTotals();
