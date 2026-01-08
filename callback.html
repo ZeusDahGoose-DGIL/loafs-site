@@ -14,8 +14,6 @@
 
   if (token && state && expected && state === expected) {
     sessionStorage.setItem("twitch_token", token);
-
-    // Go back to homepage
     location.href = location.origin + location.pathname.replace(/\/callback\.html$/, "/index.html");
   } else {
     document.body.textContent = "Login failed. Close this tab and try again.";
