@@ -26,16 +26,6 @@
       to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)); opacity: 0; }
     }
     .charRow:hover { outline: 2px solid rgba(255,255,255,.07); }
-
-    /* Leaderboard loading overlay */
-    .lbLoading {
-      display: grid;
-      place-items: center;
-      padding: 28px;
-      border-radius: 1rem;
-      background: rgba(0,0,0,0.15);
-      outline: 2px solid rgba(255,255,255,.06);
-    }
   </style>
 </head>
 
@@ -133,6 +123,14 @@
               <div id="updated" class="text-sm opacity-70"></div>
             </div>
 
+            <!-- Leaderboard loading overlay -->
+            <div id="lbLoading" class="mt-3 hidden">
+              <div class="bg-base-300 rounded-xl px-4 py-6 flex items-center justify-center gap-3 opacity-80">
+                <span class="loading loading-spinner loading-md"></span>
+                <div class="font-bold">Loading leaderboard…</div>
+              </div>
+            </div>
+
             <div id="lb" class="mt-3 space-y-2"></div>
 
             <div class="mt-4 flex items-center justify-between">
@@ -159,34 +157,45 @@
 
               <div class="flex items-center gap-2">
                 <button id="pollRefreshBtn" class="btn btn-outline btn-sm">Refresh</button>
+                <span id="pollRefreshSpin" class="loading loading-spinner loading-sm hidden"></span>
               </div>
             </div>
 
-            <div class="mt-2">
-              <div id="pollTitle" class="text-2xl font-extrabold">Secret Poll for Silly Stuff Soon</div>
-              <div id="pollSubtitle" class="text-sm opacity-70 mt-1"></div>
+            <!-- Poll loading overlay (hides default title until loaded) -->
+            <div id="pollLoading" class="mt-3 hidden">
+              <div class="bg-base-300 rounded-xl px-4 py-6 flex items-center justify-center gap-3 opacity-80">
+                <span class="loading loading-spinner loading-md"></span>
+                <div class="font-bold" id="pollLoadingText">Loading poll…</div>
+              </div>
             </div>
 
-            <div id="pollMsg" class="text-sm mt-2 opacity-80"></div>
+            <div id="pollMain" class="mt-2 hidden">
+              <div class="mt-2">
+                <div id="pollTitle" class="text-2xl font-extrabold"></div>
+                <div id="pollSubtitle" class="text-sm opacity-70 mt-1"></div>
+              </div>
 
-            <div class="mt-4">
-              <div class="text-sm opacity-70 mb-2">Current Top Bans</div>
-              <div id="pollTop" class="flex flex-wrap gap-2"></div>
-            </div>
+              <div id="pollMsg" class="text-sm mt-2 opacity-80"></div>
 
-            <div class="mt-4">
-              <div class="text-sm opacity-70 mb-2">Totals</div>
-              <div id="pollTotals" class="space-y-2"></div>
+              <div class="mt-4">
+                <div class="text-sm opacity-70 mb-2">Current Top Bans</div>
+                <div id="pollTop" class="flex flex-wrap gap-2"></div>
+              </div>
 
-              <!-- Poll paging (5 at a time) -->
-              <div class="mt-4 flex items-center justify-between">
-                <button id="pollPrev" class="btn btn-sm btn-outline" disabled>
-                  <i class="fa-solid fa-chevron-left"></i>
-                </button>
-                <div id="pollPageInfo" class="text-sm opacity-70">Page 1 of 1</div>
-                <button id="pollNext" class="btn btn-sm btn-outline" disabled>
-                  <i class="fa-solid fa-chevron-right"></i>
-                </button>
+              <div class="mt-4">
+                <div class="text-sm opacity-70 mb-2">Totals</div>
+                <div id="pollTotals" class="space-y-2"></div>
+
+                <!-- Poll paging (5 at a time) -->
+                <div class="mt-4 flex items-center justify-between">
+                  <button id="pollPrev" class="btn btn-sm btn-outline" disabled>
+                    <i class="fa-solid fa-chevron-left"></i>
+                  </button>
+                  <div id="pollPageInfo" class="text-sm opacity-70">Page 1 of 1</div>
+                  <button id="pollNext" class="btn btn-sm btn-outline" disabled>
+                    <i class="fa-solid fa-chevron-right"></i>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -308,30 +317,6 @@ function uuid(){
   return String(Date.now()) + "-" + Math.random().toString(16).slice(2);
 }
 
-/** ====== NEW: Leaderboard Loading UI ====== **/
-function showLbLoading(msg="Loading…"){
-  const el = $("lb");
-  if (!el) return;
-  el.innerHTML = `
-    <div class="lbLoading">
-      <div class="flex flex-col items-center gap-3">
-        <span class="loading loading-spinner loading-lg"></span>
-        <div class="text-sm opacity-70">${escapeHtml(msg)}</div>
-      </div>
-    </div>
-  `;
-}
-
-function showLbError(msg="Could not load leaderboard."){
-  const el = $("lb");
-  if (!el) return;
-  el.innerHTML = `
-    <div class="lbLoading">
-      <div class="text-sm text-error font-semibold">${escapeHtml(msg)}</div>
-    </div>
-  `;
-}
-
 /** ====== LOAF FX ====== **/
 function throwLoafs(){
   const layer = document.getElementById("fxLayer");
@@ -358,6 +343,49 @@ function throwLoafs(){
     layer.appendChild(el);
     setTimeout(() => el.remove(), 750);
   }
+}
+
+/** ====== LOADING UI (Leaderboard + Poll) ====== **/
+function setLeaderboardLoading(isLoading, text="Loading leaderboard…"){
+  const lb = $("lb");
+  const spin = $("lbLoading");
+  if (!lb || !spin) return;
+
+  if (isLoading){
+    lb.classList.add("hidden");
+    spin.classList.remove("hidden");
+  } else {
+    spin.classList.add("hidden");
+    lb.classList.remove("hidden");
+  }
+}
+
+function setPollLoading(isLoading, text="Loading poll…"){
+  const box = $("pollLoading");
+  const main = $("pollMain");
+  const t = $("pollLoadingText");
+  if (t) t.textContent = text;
+
+  if (isLoading){
+    if (box) box.classList.remove("hidden");
+    if (main) main.classList.add("hidden");
+  } else {
+    if (box) box.classList.add("hidden");
+    if (main) main.classList.remove("hidden");
+  }
+}
+
+function setRefreshSpinner(isOn){
+  const s = $("pollRefreshSpin");
+  if (!s) return;
+  s.classList.toggle("hidden", !isOn);
+}
+
+function setRefreshDisabled(disabled){
+  const b = $("pollRefreshBtn");
+  if (!b) return;
+  b.disabled = !!disabled;
+  b.classList.toggle("btn-disabled", !!disabled);
 }
 
 /** ====== LEADERBOARD ====== **/
@@ -388,17 +416,16 @@ function renderLeaderboard() {
     `;
   });
 
-  $("lbPageInfo").textContent = `Page ${lbPage} of ${pages}`;
+  $("lbPageInfo").textContent = \`Page ${lbPage} of ${pages}\`;
   $("lbPrev").disabled = lbPage <= 1;
   $("lbNext").disabled = lbPage >= pages;
 }
 
-async function refreshLeaderboard({quietIfUnchanged=true} = {}) {
+async function refreshLeaderboard({quietIfUnchanged=true, showLoading=false} = {}) {
   const firstLoad = (lastLeaderboardHash === "");
-  if (!quietIfUnchanged || firstLoad) {
-    showLbLoading("Loading leaderboard…");
-    $("updated").textContent = "";
-  }
+  if (firstLoad) setStatus("Loading leaderboard...");
+
+  if (showLoading) setLeaderboardLoading(true);
 
   try {
     const j = await apiGet("leaderboard", { board: currentBoard });
@@ -408,15 +435,14 @@ async function refreshLeaderboard({quietIfUnchanged=true} = {}) {
     if (!quietIfUnchanged || firstLoad || h !== lastLeaderboardHash) {
       lastLeaderboardHash = h;
       lastLeaderboardData = data;
-      $("updated").textContent = j.updated ? `Updated: ${new Date(j.updated).toLocaleTimeString()}` : "";
+      $("updated").textContent = j.updated ? \`Updated: ${new Date(j.updated).toLocaleTimeString()}\` : "";
       renderLeaderboard();
       setStatus("");
     } else {
       setStatus("");
     }
-  } catch (err) {
-    showLbError("Leaderboard failed to load. Try again.");
-    setStatus("");
+  } finally {
+    if (showLoading) setLeaderboardLoading(false);
   }
 }
 
@@ -480,9 +506,12 @@ async function refreshMe() {
 }
 
 /** ===== Poll UI ===== **/
-function setPollMsg(msg, isErr=false){
-  $("pollMsg").textContent = msg || "";
-  $("pollMsg").classList.toggle("text-error", !!isErr);
+function setPollMsg(msg, isErr=false, isBold=false){
+  const el = $("pollMsg");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.classList.toggle("text-error", !!isErr);
+  el.classList.toggle("font-bold", !!isBold);
 }
 
 function setOpenClosedBadge(isOpen){
@@ -556,6 +585,9 @@ function renderPollTotals(){
     const pct = Math.round((pts / maxPts) * 100);
     const expanded = (pollExpandedId === o.character_id);
 
+    const btnId = `voteBtn_${o.character_id}`;
+    const spinId = `voteSpin_${o.character_id}`;
+
     wrap.innerHTML += `
       <div class="charRow bg-base-300 rounded-xl px-3 py-3">
         <button class="w-full text-left flex items-center justify-between gap-3"
@@ -583,10 +615,12 @@ function renderPollTotals(){
             <input id="voteAmt_${escapeHtml(o.character_id)}"
                    type="number" min="1" step="1"
                    class="input input-bordered w-32"
-                   placeholder="Amount">
-            <button class="btn btn-sm btn-primary"
+                   placeholder="Amount" ${voteBusy ? "disabled" : ""}>
+            <button id="${btnId}" class="btn btn-sm btn-primary ${voteBusy ? "btn-disabled" : ""}"
+                    ${voteBusy ? "disabled" : ""}
                     onclick="submitVote('${escapeHtml(o.character_id)}')">
-              Submit
+              <span id="${spinId}" class="loading loading-spinner loading-xs ${voteBusy ? "" : "hidden"}"></span>
+              <span>${voteBusy ? "Submitting…" : "Submit"}</span>
             </button>
             <div class="text-sm opacity-70">Spend Loaf Points to vote.</div>
           </div>
@@ -600,6 +634,11 @@ window.togglePollRow = function(character_id){
   pollExpandedId = (pollExpandedId === character_id) ? null : character_id;
   renderPollTotals();
 };
+
+function setVoteButtonsBusy(isBusy){
+  // We re-render, but this is here in case you want instant UI flip without waiting.
+  // Current approach: set voteBusy then renderPollTotals() -> updates disabled/spinners.
+}
 
 window.submitVote = async function(character_id){
   if (voteBusy) return;
@@ -621,7 +660,9 @@ window.submitVote = async function(character_id){
   }
 
   voteBusy = true;
-  setPollMsg("Submitting…");
+  setPollMsg("Submitting vote…", false, true);
+  setRefreshDisabled(true);
+  renderPollTotals(); // disables submit + shows spinner
 
   try {
     const res = await apiPost({
@@ -635,53 +676,68 @@ window.submitVote = async function(character_id){
 
     if (!res.ok){
       if (res.current_points !== undefined){
-        setPollMsg(`Not enough Loaf Points. You have ${res.current_points}.`, true);
+        setPollMsg(`Not enough Loaf Points. You have ${res.current_points}.`, true, true);
       } else if (res.error === "poll_closed") {
-        setPollMsg("Poll is closed.", true);
+        setPollMsg("Poll is closed.", true, true);
       } else {
-        setPollMsg(res.error || "Vote failed.", true);
+        setPollMsg(res.error || "Vote failed.", true, true);
       }
       return;
     }
 
     if (res.deduped){
-      setPollMsg("Already processed (safe double-click protection).");
+      setPollMsg("Already processed (safe double-click protection).", false, true);
     } else {
-      setPollMsg("Vote counted! 🍞");
+      setPollMsg("Vote counted! 🍞", false, true);
       throwLoafs();
     }
 
+    // Fastest: use returned poll snapshot
     if (res.poll && res.poll.ok){
       pollCache = res.poll;
       setOpenClosedBadge(!!pollCache.is_open);
-      $("pollTitle").textContent = pollCache.title || "Secret Poll";
+      $("pollTitle").textContent = pollCache.title || "";
       $("pollSubtitle").textContent = pollCache.subtitle || "";
       renderTopBadges(pollCache.top || []);
       renderPollTotals();
     } else {
-      await refreshPoll();
+      await refreshPoll({showLoading:false});
     }
 
+    // refresh your points box
     await refreshMe();
+
   } finally {
     voteBusy = false;
+    setRefreshDisabled(false);
+    renderPollTotals(); // re-enable submit, remove spinner
   }
 };
 
-async function refreshPoll(){
-  const j = await apiGet("poll", { tournament_id: TOURNAMENT_ID });
-  if (!j.ok){
-    setPollMsg(j.error || "Could not load poll.", true);
-    return;
+async function refreshPoll({showLoading=false, loadingText="Loading poll…"} = {}){
+  if (showLoading) {
+    setPollLoading(true, loadingText);
   }
-  pollCache = j;
 
-  setOpenClosedBadge(!!j.is_open);
-  $("pollTitle").textContent = j.title || "Secret Poll for Silly Stuff Soon";
-  $("pollSubtitle").textContent = j.subtitle || "";
-  renderTopBadges(j.top || []);
-  renderPollTotals();
-  setPollMsg("");
+  try {
+    const j = await apiGet("poll", { tournament_id: TOURNAMENT_ID });
+    if (!j.ok){
+      setPollMsg(j.error || "Could not load poll.", true, true);
+      return;
+    }
+    pollCache = j;
+
+    setOpenClosedBadge(!!j.is_open);
+    $("pollTitle").textContent = j.title || "";
+    $("pollSubtitle").textContent = j.subtitle || "";
+    renderTopBadges(j.top || []);
+    renderPollTotals();
+    setPollMsg("");
+  } finally {
+    if (showLoading) {
+      setPollLoading(false);
+    }
+  }
 }
 
 /** ====== BOARDS DROPDOWN ====== **/
@@ -696,15 +752,12 @@ function buildBoards() {
     sel.appendChild(o);
   });
 
-  sel.onchange = () => {
+  sel.onchange = async () => {
     currentBoard = sel.value;
     localStorage.setItem("loaf_board", currentBoard);
     lbPage = 1;
-
-    // NEW: show loading immediately on board switch
-    showLbLoading("Loading leaderboard…");
-
-    refreshLeaderboard({quietIfUnchanged:false});
+    // show loading overlay when switching boards
+    await refreshLeaderboard({quietIfUnchanged:false, showLoading:true});
   };
 }
 
@@ -736,20 +789,42 @@ $("lbNext").onclick = () => { lbPage++; renderLeaderboard(); };
 
 $("pollPrev").onclick = () => { pollPage--; renderPollTotals(); };
 $("pollNext").onclick = () => { pollPage++; renderPollTotals(); };
-$("pollRefreshBtn").onclick = () => refreshPoll();
+
+$("pollRefreshBtn").onclick = async () => {
+  if (voteBusy) return;
+  setRefreshDisabled(true);
+  setRefreshSpinner(true);
+  setPollMsg("Refreshing…", false, true);
+
+  // "Refreshing" should feel like loading, but we won't hide the whole poll UI
+  try {
+    await refreshPoll({showLoading:false});
+  } finally {
+    setRefreshSpinner(false);
+    setRefreshDisabled(false);
+    setPollMsg("");
+  }
+};
 
 /** ====== Init ====== **/
 (async function init() {
   updateAuthButtonUI();
   buildBoards();
 
-  await refreshLeaderboard({quietIfUnchanged:false});
-  await refreshMe();
-  await refreshPoll();
+  // Leaderboard: show spinner on first load
+  setLeaderboardLoading(true);
+  await refreshLeaderboard({quietIfUnchanged:false, showLoading:true});
 
-  setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
+  await refreshMe();
+
+  // Poll: show loading overlay so it doesn't show default placeholder title
+  setPollLoading(true, "Loading poll…");
+  await refreshPoll({showLoading:true, loadingText:"Loading poll…"});
+  $("pollMain").classList.remove("hidden");
+
+  setInterval(() => refreshLeaderboard({quietIfUnchanged:true, showLoading:false}), 25000);
   setInterval(() => refreshMe(), 30000);
-  setInterval(() => refreshPoll(), 30000);
+  setInterval(() => refreshPoll({showLoading:false}), 30000);
 })();
 </script>
 </body>
