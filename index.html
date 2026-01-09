@@ -130,13 +130,13 @@
 
         <!-- LEADERBOARD -->
         <div class="card bg-base-200 shadow">
-          <div class="card-body">
+          <div class="card-body relative">
             <div class="flex items-center justify-between">
               <div class="text-xl font-bold">Leaderboard</div>
               <div id="updated" class="text-sm opacity-70"></div>
             </div>
 
-            <!-- Loading box (replaces leaderboard while loading) -->
+            <!-- First-load loading box (replaces list ONLY on first load) -->
             <div id="lbLoadingBox" class="mt-3 bg-base-300 rounded-xl px-4 py-4">
               <div class="flex items-center gap-3">
                 <span class="loading loading-spinner loading-md"></span>
@@ -158,6 +158,15 @@
                 <i class="fa-solid fa-chevron-right"></i>
               </button>
             </div>
+
+            <!-- Overlay (board-switch loading) -->
+            <div id="lbOverlay" class="overlayBox hidden">
+              <div class="flex items-center gap-3 bg-base-300 rounded-xl px-4 py-3 shadow">
+                <span class="loading loading-spinner loading-md"></span>
+                <div class="text-lg font-bold" id="lbOverlayText">Loading…</div>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -300,6 +309,9 @@ let voteBusy = false;
 let pollHasLoadedOnce = false;
 let pollManualRefreshing = false;
 
+/** preserves typed amounts so auto-refresh doesn't wipe input */
+const pollDraft = {}; // character_id -> string value
+
 /** ====== HELPERS ====== **/
 const $ = (id) => document.getElementById(id);
 const getToken = () => sessionStorage.getItem("twitch_token");
@@ -380,18 +392,15 @@ function throwLoafs(){
 }
 
 /** ====== LEADERBOARD LOADING UI ====== **/
-function showLbLoading(show, titleText="Loading leaderboard…"){
-  const box = $("lbLoadingBox");
-  const list = $("lb");
+function showLbFirstLoadBox(show, titleText="Loading leaderboard…"){
   $("lbLoadingTitle").textContent = titleText;
+  $("lbLoadingBox").classList.toggle("hidden", !show);
+  $("lb").classList.toggle("hidden", show);
+}
 
-  if (show){
-    box.classList.remove("hidden");
-    list.classList.add("hidden");
-  } else {
-    box.classList.add("hidden");
-    list.classList.remove("hidden");
-  }
+function setLbOverlay(show, text="Loading…"){
+  $("lbOverlayText").textContent = text;
+  $("lbOverlay").classList.toggle("hidden", !show);
 }
 
 /** ====== LEADERBOARD ====== **/
@@ -427,29 +436,35 @@ function renderLeaderboard() {
   $("lbNext").disabled = lbPage >= pages;
 }
 
-async function refreshLeaderboard({showLoading=false, quietIfUnchanged=true, loadingLabel="Loading leaderboard…"} = {}) {
-  if (showLoading) {
-    showLbLoading(true, loadingLabel);
+async function refreshLeaderboard({showOverlay=false, quietIfUnchanged=true, overlayText="Loading…"} = {}) {
+  const firstLoad = (lastLeaderboardHash === "");
+
+  if (firstLoad) {
+    showLbFirstLoadBox(true, "Loading leaderboard…");
     setStatus("Loading leaderboard...");
-  } else if (lastLeaderboardHash === "") {
-    // first load -> show loading box
-    showLbLoading(true, "Loading leaderboard…");
-    setStatus("Loading leaderboard...");
+  } else {
+    setStatus("");
   }
 
-  const j = await apiGet("leaderboard", { board: currentBoard });
-  const data = j.data || [];
-  const h = JSON.stringify(data);
+  if (showOverlay && !firstLoad) setLbOverlay(true, overlayText);
 
-  if (!quietIfUnchanged || lastLeaderboardHash === "" || h !== lastLeaderboardHash) {
-    lastLeaderboardHash = h;
-    lastLeaderboardData = data;
-    $("updated").textContent = j.updated ? `Updated: ${new Date(j.updated).toLocaleTimeString()}` : "";
-    renderLeaderboard();
+  try {
+    const j = await apiGet("leaderboard", { board: currentBoard });
+    const data = j.data || [];
+    const h = JSON.stringify(data);
+
+    if (!quietIfUnchanged || firstLoad || h !== lastLeaderboardHash) {
+      lastLeaderboardHash = h;
+      lastLeaderboardData = data;
+      $("updated").textContent = j.updated ? `Updated: ${new Date(j.updated).toLocaleTimeString()}` : "";
+      renderLeaderboard();
+    }
+
+    if (firstLoad) showLbFirstLoadBox(false);
+  } finally {
+    if (showOverlay && !firstLoad) setLbOverlay(false);
+    setStatus("");
   }
-
-  showLbLoading(false);
-  setStatus("");
 }
 
 /** ====== ACCOUNT (ME) ====== **/
@@ -589,6 +604,8 @@ function renderPollTotals(){
     const pct = Math.round((pts / maxPts) * 100);
     const expanded = (pollExpandedId === o.character_id);
 
+    const draftVal = pollDraft[o.character_id] ?? "";
+
     wrap.innerHTML += `
       <div class="charRow bg-base-300 rounded-xl px-3 py-3">
         <button class="w-full text-left flex items-center justify-between gap-3"
@@ -616,7 +633,9 @@ function renderPollTotals(){
             <input id="voteAmt_${escapeHtml(o.character_id)}"
                    type="number" min="1" step="1"
                    class="input input-bordered w-32"
-                   placeholder="Amount">
+                   placeholder="Amount"
+                   value="${escapeHtml(draftVal)}"
+                   oninput="setDraft('${escapeHtml(o.character_id)}', this.value)">
             <button id="voteBtn_${escapeHtml(o.character_id)}"
                     class="btn btn-sm btn-primary"
                     onclick="submitVote('${escapeHtml(o.character_id)}')">
@@ -631,7 +650,17 @@ function renderPollTotals(){
   });
 }
 
+window.setDraft = function(character_id, val){
+  pollDraft[character_id] = String(val ?? "");
+};
+
 window.togglePollRow = function(character_id){
+  // Your request: don't wipe input due to auto refresh.
+  // But if you click a DIFFERENT character, it's okay to drop the old one.
+  if (pollExpandedId && pollExpandedId !== character_id) {
+    delete pollDraft[pollExpandedId];
+  }
+
   pollExpandedId = (pollExpandedId === character_id) ? null : character_id;
   renderPollTotals();
 };
@@ -724,10 +753,18 @@ window.submitVote = async function(character_id){
       $("pollTitle").textContent = pollCache.title || "";
       $("pollSubtitle").textContent = pollCache.subtitle || "";
       renderTopBadges(pollCache.top || []);
-      renderPollTotals();
     } else {
       await refreshPoll({ manual:false }); // quiet
     }
+
+    // After vote: jump to Page 1 and collapse so they see the leaders.
+    pollPage = 1;
+    pollExpandedId = null;
+
+    // clear their draft for that character since it is spent now
+    delete pollDraft[character_id];
+
+    renderPollTotals();
 
     // refresh your points box
     await refreshMe();
@@ -759,7 +796,6 @@ async function refreshPoll({manual=false} = {}){
   try {
     const j = await apiGet("poll", { tournament_id: TOURNAMENT_ID });
     if (!j.ok){
-      // only show an error message if we actually already have UI visible
       if (pollHasLoadedOnce) setPollMsg(j.error || "Could not load poll.", true);
       return;
     }
@@ -777,9 +813,10 @@ async function refreshPoll({manual=false} = {}){
     $("pollTitle").textContent = j.title || "";
     $("pollSubtitle").textContent = j.subtitle || "";
     renderTopBadges(j.top || []);
+
+    // IMPORTANT: re-render totals BUT input drafts are preserved via pollDraft[]
     renderPollTotals();
 
-    // only clear message if not in the middle of vote submit text
     if (!voteBusy) setPollMsg("");
 
   } finally {
@@ -808,8 +845,9 @@ function buildBoards() {
     localStorage.setItem("loaf_board", currentBoard);
     lbPage = 1;
 
-    // show loading box when switching boards
-    await refreshLeaderboard({ showLoading:true, quietIfUnchanged:false, loadingLabel:"Loading leaderboard…" });
+    // Show dark overlay while loading (keeps old list visible behind it)
+    setLbOverlay(true, "Loading…");
+    await refreshLeaderboard({showOverlay:true, quietIfUnchanged:false, overlayText:"Loading…"});
   };
 }
 
@@ -854,7 +892,7 @@ $("pollRefreshBtn").onclick = () => {
   buildBoards();
 
   // First loads
-  showLbLoading(true, "Loading leaderboard…");
+  showLbFirstLoadBox(true, "Loading leaderboard…");
   await refreshLeaderboard({quietIfUnchanged:false});
   await refreshMe();
   await refreshPoll({manual:false}); // first load shows boxed loading
