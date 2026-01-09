@@ -27,19 +27,20 @@
     }
     .charRow:hover { outline: 2px solid rgba(255,255,255,.07); }
 
-    /* Loading overlays (Leaderboard + Poll) */
-    .cardLoadingWrap { position: relative; }
-    .cardLoadingOverlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,0.35);
-      backdrop-filter: blur(1px);
+    /* ===== Loading overlays ===== */
+    .overlayWrap { position: relative; }
+    .loadingOverlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.25);
       border-radius: 1rem;
-      z-index: 50;
+      z-index: 20;
     }
+    .loadingOverlay.hidden { display: none; }
+
+    /* Hide poll UI until JS says it's ready (prevents flash of CLOSED/Totals/etc.) */
+    #pollContent { display: none; }
+    body.poll-ready #pollContent { display: block; }
   </style>
 </head>
 
@@ -130,16 +131,18 @@
       <div class="lg:col-span-6 space-y-4">
 
         <!-- LEADERBOARD -->
-        <div class="card bg-base-200 shadow">
-          <div class="card-body cardLoadingWrap" id="lbCardWrap">
-            <!-- Loading overlay -->
-            <div id="lbLoadingOverlay" class="cardLoadingOverlay hidden">
-              <div class="flex flex-col items-center gap-2">
-                <span class="loading loading-spinner loading-lg"></span>
-                <div class="font-bold">Loading leaderboard…</div>
+        <div class="card bg-base-200 shadow overlayWrap" id="lbCard">
+          <!-- overlay -->
+          <div id="lbOverlay" class="loadingOverlay hidden">
+            <div class="text-center">
+              <div class="font-bold text-lg">Loading leaderboard…</div>
+              <div class="mt-2">
+                <span class="loading loading-spinner loading-md"></span>
               </div>
             </div>
+          </div>
 
+          <div class="card-body">
             <div class="flex items-center justify-between">
               <div class="text-xl font-bold">Leaderboard</div>
               <div id="updated" class="text-sm opacity-70"></div>
@@ -160,63 +163,60 @@
         </div>
 
         <!-- POLL -->
-        <div class="card bg-base-200 shadow">
-          <div class="card-body cardLoadingWrap" id="pollCardWrap">
+        <div class="card bg-base-200 shadow overlayWrap" id="pollCard">
+          <!-- overlay (shows immediately on load) -->
+          <div id="pollOverlay" class="loadingOverlay">
+            <div class="text-center">
+              <div id="pollOverlayText" class="font-bold text-lg">Loading poll…</div>
+              <div class="mt-2">
+                <span id="pollOverlaySpinner" class="loading loading-spinner loading-md"></span>
+              </div>
+            </div>
+          </div>
 
-            <!-- Loading overlay -->
-            <div id="pollLoadingOverlay" class="cardLoadingOverlay hidden">
-              <div class="flex flex-col items-center gap-2">
-                <span class="loading loading-spinner loading-lg"></span>
-                <div class="font-bold" id="pollLoadingText">Loading poll…</div>
+          <div class="card-body" id="pollContent">
+
+            <!-- OPEN/CLOSED badge ABOVE title -->
+            <div class="flex items-start justify-between gap-3 flex-wrap">
+              <div class="flex items-center gap-2">
+                <div id="pollStateBadge" class="badge badge-outline px-3 py-3 font-bold">CLOSED</div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button id="pollRefreshBtn" class="btn btn-outline btn-sm">
+                  <span id="pollRefreshText">Refresh</span>
+                  <span id="pollRefreshSpinner" class="loading loading-spinner loading-xs hidden"></span>
+                </button>
               </div>
             </div>
 
-            <!-- Poll UI hidden until loaded -->
-            <div id="pollContent" class="hidden">
+            <div class="mt-2">
+              <div id="pollTitle" class="text-2xl font-extrabold">Secret Poll for Silly Stuff Soon</div>
+              <div id="pollSubtitle" class="text-sm opacity-70 mt-1"></div>
+            </div>
 
-              <!-- OPEN/CLOSED badge ABOVE title -->
-              <div class="flex items-start justify-between gap-3 flex-wrap">
-                <div class="flex items-center gap-2">
-                  <div id="pollStateBadge" class="badge badge-outline px-3 py-3 font-bold">CLOSED</div>
-                </div>
+            <div id="pollMsg" class="text-sm mt-2 opacity-80"></div>
 
-                <div class="flex items-center gap-2">
-                  <button id="pollRefreshBtn" class="btn btn-outline btn-sm">
-                    <span id="pollRefreshSpinner" class="loading loading-spinner loading-xs hidden"></span>
-                    <span id="pollRefreshText">Refresh</span>
-                  </button>
-                </div>
+            <div class="mt-4">
+              <div class="text-sm opacity-70 mb-2">Current Top Bans</div>
+              <div id="pollTop" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <div class="mt-4">
+              <div class="text-sm opacity-70 mb-2">Totals</div>
+              <div id="pollTotals" class="space-y-2"></div>
+
+              <!-- Poll paging (5 at a time) -->
+              <div class="mt-4 flex items-center justify-between">
+                <button id="pollPrev" class="btn btn-sm btn-outline" disabled>
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <div id="pollPageInfo" class="text-sm opacity-70">Page 1 of 1</div>
+                <button id="pollNext" class="btn btn-sm btn-outline" disabled>
+                  <i class="fa-solid fa-chevron-right"></i>
+                </button>
               </div>
-
-              <div class="mt-2">
-                <div id="pollTitle" class="text-2xl font-extrabold"></div>
-                <div id="pollSubtitle" class="text-sm opacity-70 mt-1"></div>
-              </div>
-
-              <div id="pollMsg" class="text-sm mt-2 opacity-80"></div>
-
-              <div class="mt-4">
-                <div class="text-sm opacity-70 mb-2">Current Top Bans</div>
-                <div id="pollTop" class="flex flex-wrap gap-2"></div>
-              </div>
-
-              <div class="mt-4">
-                <div class="text-sm opacity-70 mb-2">Totals</div>
-                <div id="pollTotals" class="space-y-2"></div>
-
-                <!-- Poll paging (5 at a time) -->
-                <div class="mt-4 flex items-center justify-between">
-                  <button id="pollPrev" class="btn btn-sm btn-outline" disabled>
-                    <i class="fa-solid fa-chevron-left"></i>
-                  </button>
-                  <div id="pollPageInfo" class="text-sm opacity-70">Page 1 of 1</div>
-                  <button id="pollNext" class="btn btn-sm btn-outline" disabled>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </button>
-                </div>
-              </div>
-
-            </div><!-- /pollContent -->
+            </div>
 
           </div>
         </div>
@@ -284,6 +284,7 @@ let pollPage = 1;
 let pollCache = null;
 let pollExpandedId = null;
 let voteBusy = false;
+let pollRefreshing = false;
 
 /** ====== HELPERS ====== **/
 const $ = (id) => document.getElementById(id);
@@ -336,32 +337,15 @@ function uuid(){
   return String(Date.now()) + "-" + Math.random().toString(16).slice(2);
 }
 
-/** ====== Loading helpers ====== **/
-function showLbLoading(show){
-  const o = $("lbLoadingOverlay");
-  if (!o) return;
-  o.classList.toggle("hidden", !show);
+/** ====== Loading overlay helpers ====== **/
+function showLbLoading(show=true){
+  $("lbOverlay").classList.toggle("hidden", !show);
 }
-function showPollLoading(show, text){
-  const o = $("pollLoadingOverlay");
-  if (!o) return;
-  if (text) $("pollLoadingText").textContent = text;
-  o.classList.toggle("hidden", !show);
-}
-function showPollContent(show){
-  const c = $("pollContent");
-  if (!c) return;
-  c.classList.toggle("hidden", !show);
-}
-function setPollRefreshBusy(busy){
-  const btn = $("pollRefreshBtn");
-  const sp = $("pollRefreshSpinner");
-  const tx = $("pollRefreshText");
-  if (!btn || !sp || !tx) return;
 
-  btn.disabled = !!busy || voteBusy;
-  sp.classList.toggle("hidden", !busy);
-  tx.textContent = busy ? "Refreshing…" : "Refresh";
+function showPollLoading(show=true, text="Loading poll…"){
+  const ov = $("pollOverlay");
+  $("pollOverlayText").textContent = text;
+  ov.classList.toggle("hidden", !show);
 }
 
 /** ====== LOAF FX ====== **/
@@ -425,12 +409,12 @@ function renderLeaderboard() {
   $("lbNext").disabled = lbPage >= pages;
 }
 
-async function refreshLeaderboard({quietIfUnchanged=true, forceLoadingUI=false} = {}) {
+async function refreshLeaderboard({quietIfUnchanged=true} = {}) {
   const firstLoad = (lastLeaderboardHash === "");
   if (firstLoad) setStatus("Loading leaderboard...");
 
-  // ✅ show spinner on first load OR when forced (board change)
-  if (firstLoad || forceLoadingUI) showLbLoading(true);
+  // show overlay whenever we are switching boards OR first load
+  if (firstLoad || !quietIfUnchanged) showLbLoading(true);
 
   try {
     const j = await apiGet("leaderboard", { board: currentBoard });
@@ -447,7 +431,7 @@ async function refreshLeaderboard({quietIfUnchanged=true, forceLoadingUI=false} 
       setStatus("");
     }
   } finally {
-    if (firstLoad || forceLoadingUI) showLbLoading(false);
+    showLbLoading(false);
   }
 }
 
@@ -511,10 +495,10 @@ async function refreshMe() {
 }
 
 /** ===== Poll UI ===== **/
-function setPollMsg(msg, isErr=false, bold=false){
+function setPollMsg(msg, isErr=false){
   $("pollMsg").textContent = msg || "";
   $("pollMsg").classList.toggle("text-error", !!isErr);
-  $("pollMsg").classList.toggle("font-bold", !!bold);
+  $("pollMsg").classList.toggle("font-bold", !!msg);  // make status bold when shown
 }
 
 function setOpenClosedBadge(isOpen){
@@ -556,6 +540,13 @@ function getSortedOptions(options){
     if (dp !== 0) return dp;
     return a._idx - b._idx;
   });
+}
+
+function setPollRefreshUI(refreshing){
+  pollRefreshing = !!refreshing;
+  $("pollRefreshBtn").disabled = refreshing || voteBusy;
+  $("pollRefreshText").textContent = refreshing ? "Refreshing…" : "Refresh";
+  $("pollRefreshSpinner").classList.toggle("hidden", !refreshing);
 }
 
 function renderPollTotals(){
@@ -615,14 +606,15 @@ function renderPollTotals(){
             <input id="voteAmt_${escapeHtml(o.character_id)}"
                    type="number" min="1" step="1"
                    class="input input-bordered w-32"
-                   placeholder="Amount" ${voteBusy ? "disabled" : ""}>
-            <button id="voteBtn_${escapeHtml(o.character_id)}"
+                   placeholder="Amount">
+
+            <button id="submitBtn_${escapeHtml(o.character_id)}"
                     class="btn btn-sm btn-primary"
-                    onclick="submitVote('${escapeHtml(o.character_id)}')"
-                    ${voteBusy ? "disabled" : ""}>
-              <span id="voteSpin_${escapeHtml(o.character_id)}" class="loading loading-spinner loading-xs hidden"></span>
-              <span id="voteText_${escapeHtml(o.character_id)}">Submit</span>
+                    onclick="submitVote('${escapeHtml(o.character_id)}')">
+              <span>Submit</span>
+              <span id="submitSpin_${escapeHtml(o.character_id)}" class="loading loading-spinner loading-xs hidden"></span>
             </button>
+
             <div class="text-sm opacity-70">Spend Loaf Points to vote.</div>
           </div>
         ` : ``}
@@ -636,39 +628,42 @@ window.togglePollRow = function(character_id){
   renderPollTotals();
 };
 
-function setVoteButtonBusy(character_id, busy){
-  const btn = document.getElementById(`voteBtn_${character_id}`);
-  const sp = document.getElementById(`voteSpin_${character_id}`);
-  const tx = document.getElementById(`voteText_${character_id}`);
-
-  if (btn) btn.disabled = !!busy;
-  if (sp) sp.classList.toggle("hidden", !busy);
-  if (tx) tx.textContent = busy ? "Submitting…" : "Submit";
+function setSubmitUI(character_id, submitting){
+  const btn = document.getElementById(`submitBtn_${character_id}`);
+  const sp = document.getElementById(`submitSpin_${character_id}`);
+  if (!btn) return;
+  btn.disabled = !!submitting;
+  if (sp) sp.classList.toggle("hidden", !submitting);
 }
 
 window.submitVote = async function(character_id){
   if (voteBusy) return;
 
   if (!getToken()){
-    setPollMsg("Login with Twitch first.", true, true);
+    setPollMsg("Login with Twitch first.", true);
     return;
   }
   if (pollCache && pollCache.is_open === false){
-    setPollMsg("Poll is closed.", true, true);
+    setPollMsg("Poll is closed.", true);
     return;
   }
 
   const input = document.getElementById(`voteAmt_${character_id}`);
   const amt = parseInt(input?.value || "", 10);
   if (!Number.isFinite(amt) || amt <= 0){
-    setPollMsg("Enter an amount (example: 25).", true, true);
+    setPollMsg("Enter an amount (example: 25).", true);
     return;
   }
 
   voteBusy = true;
-  setPollRefreshBusy(true);
-  setVoteButtonBusy(character_id, true);
-  setPollMsg("Submitting your vote…", false, true);
+  setPollMsg("Submitting vote…", false);
+
+  // Disable refresh while submitting
+  setPollRefreshUI(false);
+  $("pollRefreshBtn").disabled = true;
+
+  // Disable this submit button + show spinner
+  setSubmitUI(character_id, true);
 
   try {
     const res = await apiPost({
@@ -682,69 +677,75 @@ window.submitVote = async function(character_id){
 
     if (!res.ok){
       if (res.current_points !== undefined){
-        setPollMsg(`Not enough Loaf Points. You have ${res.current_points}.`, true, true);
+        setPollMsg(`Not enough Loaf Points. You have ${res.current_points}.`, true);
       } else if (res.error === "poll_closed") {
-        setPollMsg("Poll is closed.", true, true);
+        setPollMsg("Poll is closed.", true);
       } else {
-        setPollMsg(res.error || "Vote failed.", true, true);
+        setPollMsg(res.error || "Vote failed.", true);
       }
       return;
     }
 
     if (res.deduped){
-      setPollMsg("Already processed (safe double-click protection).", false, true);
+      setPollMsg("Already processed (safe double-click protection).");
     } else {
-      setPollMsg("Vote counted! 🍞", false, true);
+      setPollMsg("Vote counted! 🍞");
       throwLoafs();
     }
 
     if (res.poll && res.poll.ok){
       pollCache = res.poll;
       setOpenClosedBadge(!!pollCache.is_open);
-      $("pollTitle").textContent = pollCache.title || "";
+      $("pollTitle").textContent = pollCache.title || "Secret Poll";
       $("pollSubtitle").textContent = pollCache.subtitle || "";
       renderTopBadges(pollCache.top || []);
       renderPollTotals();
     } else {
-      await refreshPoll({forceLoadingUI:true});
+      await refreshPoll(); // fallback
     }
 
     await refreshMe();
   } finally {
+    // Re-enable submit (so they can vote again if they want)
+    setSubmitUI(character_id, false);
+
     voteBusy = false;
-    setPollRefreshBusy(false);
-    setVoteButtonBusy(character_id, false);
+    $("pollRefreshBtn").disabled = false;
+    setPollRefreshUI(false);
   }
 };
 
-async function refreshPoll({forceLoadingUI=false} = {}){
-  const firstLoad = !pollCache;
+async function refreshPoll({showRefreshing=false} = {}){
+  // show overlay while poll loads
+  if (!document.body.classList.contains("poll-ready")) {
+    showPollLoading(true, "Loading poll…");
+  } else if (showRefreshing) {
+    showPollLoading(true, "Refreshing…");
+  }
 
-  // ✅ do NOT show CLOSED/totals/etc until poll is loaded
-  if (firstLoad) showPollContent(false);
-
-  // ✅ show spinner on first load OR when forced (refresh)
-  if (firstLoad || forceLoadingUI) showPollLoading(true, forceLoadingUI ? "Refreshing poll…" : "Loading poll…");
+  if (showRefreshing) setPollRefreshUI(true);
 
   try {
     const j = await apiGet("poll", { tournament_id: TOURNAMENT_ID });
     if (!j.ok){
-      setPollMsg(j.error || "Could not load poll.", true, true);
+      setPollMsg(j.error || "Could not load poll.", true);
       return;
     }
 
     pollCache = j;
 
+    // Now that we have real data, reveal poll UI and hide overlay
+    document.body.classList.add("poll-ready");
+
     setOpenClosedBadge(!!j.is_open);
-    $("pollTitle").textContent = j.title || "";
+    $("pollTitle").textContent = j.title || "Secret Poll for Silly Stuff Soon";
     $("pollSubtitle").textContent = j.subtitle || "";
     renderTopBadges(j.top || []);
     renderPollTotals();
     setPollMsg("");
-
-    showPollContent(true);
   } finally {
-    if (firstLoad || forceLoadingUI) showPollLoading(false);
+    showPollLoading(false);
+    if (showRefreshing) setPollRefreshUI(false);
   }
 }
 
@@ -764,7 +765,9 @@ function buildBoards() {
     currentBoard = sel.value;
     localStorage.setItem("loaf_board", currentBoard);
     lbPage = 1;
-    await refreshLeaderboard({quietIfUnchanged:false, forceLoadingUI:true});
+    // show loading overlay when switching boards
+    showLbLoading(true);
+    await refreshLeaderboard({quietIfUnchanged:false});
   };
 }
 
@@ -797,16 +800,9 @@ $("lbNext").onclick = () => { lbPage++; renderLeaderboard(); };
 $("pollPrev").onclick = () => { pollPage--; renderPollTotals(); };
 $("pollNext").onclick = () => { pollPage++; renderPollTotals(); };
 
-$("pollRefreshBtn").onclick = async () => {
-  if (voteBusy) return;
-  setPollRefreshBusy(true);
-  showPollLoading(true, "Refreshing poll…");
-  try {
-    await refreshPoll({forceLoadingUI:false});
-  } finally {
-    showPollLoading(false);
-    setPollRefreshBusy(false);
-  }
+$("pollRefreshBtn").onclick = () => {
+  if (voteBusy || pollRefreshing) return;
+  refreshPoll({showRefreshing:true});
 };
 
 /** ====== Init ====== **/
@@ -814,30 +810,17 @@ $("pollRefreshBtn").onclick = async () => {
   updateAuthButtonUI();
   buildBoards();
 
-  // ✅ LEADERBOARD should start as loading (spinner overlay)
+  // show both loaders immediately so it's never blank / never flashes defaults
   showLbLoading(true);
-  try {
-    await refreshLeaderboard({quietIfUnchanged:false});
-  } finally {
-    // refreshLeaderboard also hides it, but this guarantees no blank flash
-    showLbLoading(false);
-  }
-
-  await refreshMe();
-
-  // ✅ POLL should start as loading and not show default UI until loaded
-  showPollContent(false);
   showPollLoading(true, "Loading poll…");
-  try {
-    await refreshPoll({forceLoadingUI:false});
-  } finally {
-    // refreshPoll hides it on success, but keep safe
-    showPollLoading(false);
-  }
+
+  await refreshLeaderboard({quietIfUnchanged:false});
+  await refreshMe();
+  await refreshPoll({showRefreshing:false});
 
   setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
   setInterval(() => refreshMe(), 30000);
-  setInterval(() => refreshPoll({forceLoadingUI:false}), 30000);
+  setInterval(() => refreshPoll({showRefreshing:false}), 30000);
 })();
 </script>
 </body>
