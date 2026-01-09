@@ -431,18 +431,7 @@ async function refreshMe() {
   }
 }
 
-/** ====== POLL ====== **/
-function setPollBadge(isOpen){
-  const el = $("pollBadge");
-  if (isOpen) {
-    el.textContent = "OPEN";
-    el.className = "px-3 py-1 rounded-xl border border-green-500 text-green-400 text-sm font-bold tracking-wide";
-  } else {
-    el.textContent = "CLOSED";
-    el.className = "px-3 py-1 rounded-xl border border-red-500 text-red-400 text-sm font-bold tracking-wide";
-  }
-}
-
+/** ===== Poll ===== **/
 function setPollMsg(msg, isErr=false){
   $("pollMsg").textContent = msg || "";
   $("pollMsg").classList.toggle("text-error", !!isErr);
@@ -451,11 +440,11 @@ function setPollMsg(msg, isErr=false){
 function renderTopBadges(names){
   const wrap = $("pollTop");
   wrap.innerHTML = "";
-  if (!names || !names.length) {
+  if (!names || !names.length){
     wrap.innerHTML = `<span class="opacity-70">—</span>`;
     return;
   }
-  names.slice(0,3).forEach((n, i) => {
+  names.forEach((n, i) => {
     const badge = document.createElement("div");
     badge.className = "badge badge-error badge-lg gap-2";
     badge.textContent = `#${i+1} ${n}`;
@@ -463,82 +452,151 @@ function renderTopBadges(names){
   });
 }
 
+function setOpenClosedBadge(isOpen){
+  const b = $("pollStateBadge");
+  if (isOpen){
+    b.textContent = "OPEN";
+    b.className = "badge badge-outline px-3 py-3 font-bold border-success text-success";
+  } else {
+    b.textContent = "CLOSED";
+    b.className = "badge badge-outline px-3 py-3 font-bold border-error text-error";
+  }
+}
+
+function throwLoafs(){
+  const layer = document.getElementById("fxLayer");
+  if (!layer) return;
+
+  const count = 14;
+  const x = window.innerWidth * 0.5;
+  const y = window.innerHeight * 0.35;
+
+  for (let i=0;i<count;i++){
+    const el = document.createElement("div");
+    el.className = "crumb";
+    el.textContent = "🍞";
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+
+    const dx = (Math.random()*260 - 130) + "px";
+    const dy = (Math.random()*220 - 220) + "px";
+    const rot = (Math.random()*240 - 120) + "deg";
+    el.style.setProperty("--dx", dx);
+    el.style.setProperty("--dy", dy);
+    el.style.setProperty("--rot", rot);
+
+    layer.appendChild(el);
+    setTimeout(() => el.remove(), 750);
+  }
+}
+
+let pollCache = null;
+let voteBusy = false;
+
+// paging + expansion
+const POLL_PAGE_SIZE = 5;
+let pollPage = 1;
+let pollExpandedId = null;
+
+function getSortedOptions(options){
+  // Sort by points desc, BUT keep original sheet order when tied or all zero
+  // We preserve original order using _idx.
+  const arr = (options || []).map((o, i) => ({...o, _idx:i}));
+
+  const maxPts = Math.max(0, ...arr.map(x => Number(x.points||0)));
+  if (maxPts === 0){
+    // everything is zero -> original order
+    return arr.sort((a,b)=> a._idx - b._idx);
+  }
+
+  // otherwise sort by points desc; tie-break by original order
+  return arr.sort((a,b)=>{
+    const dp = Number(b.points||0) - Number(a.points||0);
+    if (dp !== 0) return dp;
+    return a._idx - b._idx;
+  });
+}
+
 function renderPollTotals(){
   const wrap = $("pollTotals");
   wrap.innerHTML = "";
 
-  const options = (pollCache && pollCache.options) ? pollCache.options : [];
+  const options = getSortedOptions(pollCache?.options || []);
+  if (!options.length){
+    wrap.innerHTML = `<div class="opacity-70 text-sm">No options found.</div>`;
+    $("pollPageInfo").textContent = "Page 1 of 1";
+    $("pollPrev").disabled = true;
+    $("pollNext").disabled = true;
+    return;
+  }
+
   const pages = Math.max(1, Math.ceil(options.length / POLL_PAGE_SIZE));
   pollPage = Math.min(Math.max(1, pollPage), pages);
 
   const start = (pollPage - 1) * POLL_PAGE_SIZE;
   const slice = options.slice(start, start + POLL_PAGE_SIZE);
 
-  const maxPts = Math.max(1, ...options.map(o => o.points || 0));
-
-  slice.forEach(o => {
-    const pct = Math.round(((o.points || 0) / maxPts) * 100);
-    const icon = o.icon_path || "";
-
-    wrap.innerHTML += `
-      <div class="flex items-center justify-between bg-base-300 rounded-xl px-3 py-3 gap-3">
-        <div class="flex items-center gap-3 min-w-0">
-          <img src="${escapeHtml(icon)}" onerror="this.style.display='none'"
-               class="w-10 h-10 rounded-xl object-cover bg-base-200" alt="">
-          <div class="min-w-0">
-            <div class="font-bold truncate">${escapeHtml(o.character_name)}</div>
-            <div class="w-56 max-w-[50vw] bg-base-200 rounded-full h-2 mt-2 overflow-hidden">
-              <div class="h-2 bg-primary" style="width:${pct}%;"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <div class="badge badge-secondary text-lg">${o.points || 0}</div>
-          <button class="btn btn-sm btn-outline" data-cid="${escapeHtml(o.character_id)}">Vote</button>
-        </div>
-      </div>
-    `;
-  });
-
   $("pollPageInfo").textContent = `Page ${pollPage} of ${pages}`;
   $("pollPrev").disabled = pollPage <= 1;
   $("pollNext").disabled = pollPage >= pages;
 
-  // wire vote buttons
-  wrap.querySelectorAll("button[data-cid]").forEach(btn=>{
-    btn.onclick = () => vote(btn.getAttribute("data-cid"));
+  const maxPts = Math.max(1, ...options.map(o => Number(o.points||0)));
+
+  slice.forEach(o => {
+    const pts = Number(o.points || 0);
+    const pct = Math.round((pts / maxPts) * 100);
+    const expanded = (pollExpandedId === o.character_id);
+
+    wrap.innerHTML += `
+      <div class="charRow bg-base-300 rounded-xl px-3 py-3">
+        <button class="w-full text-left flex items-center justify-between gap-3"
+                onclick="togglePollRow('${escapeHtml(o.character_id)}')">
+          <div class="flex items-center gap-3 min-w-0">
+            <img src="${escapeHtml(o.icon_path || "")}"
+                 onerror="this.style.display='none'"
+                 class="w-10 h-10 rounded-xl object-cover bg-base-200" alt="">
+            <div class="min-w-0">
+              <div class="font-bold truncate">${escapeHtml(o.character_name)}</div>
+              <div class="w-56 max-w-[50vw] bg-base-200 rounded-full h-2 mt-2 overflow-hidden">
+                <div class="h-2 bg-primary" style="width:${pct}%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <div class="badge badge-secondary text-lg">${pts}</div>
+            <i class="fa-solid ${expanded ? "fa-chevron-up" : "fa-chevron-down"} opacity-70"></i>
+          </div>
+        </button>
+
+        ${expanded ? `
+          <div class="mt-3 flex items-center gap-2 flex-wrap">
+            <input id="voteAmt_${escapeHtml(o.character_id)}"
+                   type="number" min="1" step="1"
+                   class="input input-bordered w-32"
+                   placeholder="Amount">
+            <button class="btn btn-sm btn-primary"
+                    onclick="submitVote('${escapeHtml(o.character_id)}')">
+              Submit
+            </button>
+            <div class="text-sm opacity-70">Spend Loaf Points to vote.</div>
+          </div>
+        ` : ``}
+      </div>
+    `;
   });
 }
 
-async function refreshPoll(){
-  const j = await apiGet("poll", { tournament_id: TOURNAMENT_ID });
-  if (!j.ok){
-    setPollMsg(j.error || "Could not load poll.", true);
-    return;
-  }
-  pollCache = j;
-
-  setPollBadge(!!j.is_open);
-  $("pollTitle").textContent = j.title || "Loading...";
-  $("pollSubtitle").textContent = j.subtitle || "";
-  renderTopBadges(j.top || []);
+window.togglePollRow = function(character_id){
+  pollExpandedId = (pollExpandedId === character_id) ? null : character_id;
   renderPollTotals();
-  setPollMsg("");
-}
+};
 
-let voteBusy = false;
-
-async function vote(character_id){
+window.submitVote = async function(character_id){
   if (voteBusy) return;
+
   if (!getToken()){
     setPollMsg("Login with Twitch first.", true);
-    return;
-  }
-
-  const amt = parseInt($("voteAmount").value, 10);
-  if (!Number.isFinite(amt) || amt <= 0){
-    setPollMsg("Enter an amount (example: 25).", true);
     return;
   }
 
@@ -547,10 +605,17 @@ async function vote(character_id){
     return;
   }
 
-  voteBusy = true;
-  setPollMsg("Submitting vote…");
+  const input = document.getElementById(`voteAmt_${character_id}`);
+  const amt = parseInt(input?.value || "", 10);
+  if (!Number.isFinite(amt) || amt <= 0){
+    setPollMsg("Enter an amount (example: 25).", true);
+    return;
+  }
 
-  try{
+  voteBusy = true;
+  setPollMsg("Submitting…");
+
+  try {
     const res = await apiPost({
       route: "vote",
       tournament_id: TOURNAMENT_ID,
@@ -571,18 +636,18 @@ async function vote(character_id){
       return;
     }
 
-    if (!res.deduped) {
-      throwLoafs();
-      setPollMsg("Vote counted! 🍞");
-    } else {
+    if (res.deduped){
       setPollMsg("Already processed (safe double-click protection).");
+    } else {
+      setPollMsg("Vote counted! 🍞");
+      throwLoafs();
     }
 
-    // update from returned poll payload
-    if (res.poll && res.poll.ok) {
+    // use returned poll snapshot (fastest)
+    if (res.poll && res.poll.ok){
       pollCache = res.poll;
-      setPollBadge(!!pollCache.is_open);
-      $("pollTitle").textContent = pollCache.title || "Loading...";
+      setOpenClosedBadge(!!pollCache.is_open);
+      $("pollTitle").textContent = pollCache.title || "Secret Poll";
       $("pollSubtitle").textContent = pollCache.subtitle || "";
       renderTopBadges(pollCache.top || []);
       renderPollTotals();
@@ -590,11 +655,35 @@ async function vote(character_id){
       await refreshPoll();
     }
 
+    // refresh your points box
     await refreshMe();
+
   } finally {
     voteBusy = false;
   }
+};
+
+async function refreshPoll(){
+  const j = await apiGet("poll", { tournament_id: TOURNAMENT_ID });
+  if (!j.ok){
+    setPollMsg(j.error || "Could not load poll.", true);
+    return;
+  }
+  pollCache = j;
+
+  setOpenClosedBadge(!!j.is_open);
+  $("pollTitle").textContent = j.title || "Secret Poll";
+  $("pollSubtitle").textContent = j.subtitle || "";
+  renderTopBadges(j.top || []);
+  renderPollTotals();
+  setPollMsg(""); // don’t spam “open/closed” text anymore
 }
+
+// poll paging buttons
+$("pollPrev").onclick = () => { pollPage--; renderPollTotals(); };
+$("pollNext").onclick = () => { pollPage++; renderPollTotals(); };
+$("pollRefreshBtn").onclick = () => refreshPoll();
+
 
 /** ====== BOARDS DROPDOWN ====== **/
 function buildBoards() {
