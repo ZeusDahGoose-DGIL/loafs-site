@@ -5,42 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Loaf Points</title>
 
-  <!-- Tailwind / DaisyUI -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.18/dist/full.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="icon" type="image/png" href="assets/favicon.png">
 
   <style>
-    /* ===============================
-       BACKGROUND IMAGE
-       =============================== */
-    body {
-      background-image: url("assets/oceanbg.png");
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-attachment: fixed;
-    }
-
-    /* Dark overlay for readability */
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.55);
-      z-index: -1;
-    }
-
     /* FX layer for loaf toss */
-    #fxLayer {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      overflow: hidden;
-      z-index: 9999;
-    }
-
+    #fxLayer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 9999; }
     .crumb {
       position: absolute;
       will-change: transform, opacity;
@@ -50,20 +22,14 @@
       animation: fly 700ms ease-out forwards;
       filter: drop-shadow(0 6px 10px rgba(0,0,0,.35));
     }
-
     @keyframes fly {
-      to {
-        transform: translate(
-          calc(-50% + var(--dx)),
-          calc(-50% + var(--dy))
-        ) rotate(var(--rot));
-        opacity: 0;
-      }
+      to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)); opacity: 0; }
     }
+    .charRow:hover { outline: 2px solid rgba(255,255,255,.07); }
   </style>
 </head>
 
-<body class="min-h-screen text-base-content">
+<body class="bg-base-300 min-h-screen text-base-content">
   <div id="fxLayer"></div>
 
   <div class="max-w-7xl mx-auto p-6 space-y-4">
@@ -82,6 +48,7 @@
     <div class="flex justify-end mb-2">
       <div class="flex items-center gap-2">
         <select id="boardSelect" class="select select-bordered"></select>
+
         <button id="authBtn" class="btn btn-primary">
           <i class="fa-brands fa-twitch"></i>
           <span id="authBtnText">Login</span>
@@ -95,41 +62,51 @@
       <!-- LEFT PANEL -->
       <div class="lg:col-span-3 lg:sticky lg:top-4 space-y-4">
 
+        <!-- ACCOUNT SLOT (fixed height so columns align) -->
         <div class="min-h-[260px]">
+
+          <!-- Loading -->
           <div id="acctLoading" class="card bg-base-200 shadow hidden">
             <div class="card-body">
               <div class="text-lg font-bold">Loading Account Info…</div>
-              <div class="text-sm opacity-70">Checking your Twitch login.</div>
+              <div class="text-sm opacity-70">
+                Checking your Twitch login and pulling your Loaf Points.
+              </div>
               <div class="mt-3 flex items-center gap-3 opacity-70">
                 <span class="loading loading-spinner loading-md"></span>
-                <span>Please wait…</span>
+                <span class="text-sm">Please wait…</span>
               </div>
             </div>
           </div>
 
+          <!-- Logged in -->
           <div id="meCard" class="card bg-base-200 shadow hidden">
             <div class="card-body">
               <div class="text-sm opacity-70">Logged in as</div>
               <div id="meName" class="text-xl font-bold"></div>
 
-              <div class="mt-3 bg-base-300 rounded-xl p-3">
-                <div class="text-sm opacity-70">Loaf Points (current)</div>
-                <div id="meTotalPoints" class="text-3xl font-extrabold">0</div>
-              </div>
+              <div class="mt-3 grid grid-cols-1 gap-3">
+                <div class="bg-base-300 rounded-xl p-3">
+                  <div class="text-sm opacity-70">Loaf Points (current)</div>
+                  <div id="meTotalPoints" class="text-3xl font-extrabold">0</div>
+                </div>
 
-              <div class="mt-3 bg-base-300 rounded-xl p-3">
-                <div class="text-sm opacity-70">Board rank</div>
-                <div id="meRank" class="text-3xl font-extrabold">—</div>
+                <div class="bg-base-300 rounded-xl p-3">
+                  <div class="text-sm opacity-70">Board rank</div>
+                  <div id="meRank" class="text-3xl font-extrabold">—</div>
+                </div>
               </div>
             </div>
           </div>
+
         </div>
 
+        <!-- HOW IT WORKS -->
         <div id="loginHint" class="card bg-base-200 shadow">
           <div class="card-body">
             <div class="text-lg font-bold">How it works</div>
             <div class="text-sm opacity-70">
-              Login with Twitch to view your Loaf Points and leaderboard rank.
+              Login with Twitch to view your Loaf Points, see your rank on the leaderboard, and rankings in each game.
             </div>
           </div>
         </div>
@@ -160,8 +137,51 @@
           </div>
         </div>
 
-        <!-- POLL (unchanged logic, already working) -->
-        <div id="pollMount"></div>
+        <!-- POLL -->
+        <div class="card bg-base-200 shadow">
+          <div class="card-body">
+
+            <!-- OPEN/CLOSED badge ABOVE title -->
+            <div class="flex items-start justify-between gap-3 flex-wrap">
+              <div class="flex items-center gap-2">
+                <div id="pollStateBadge" class="badge badge-outline px-3 py-3 font-bold">CLOSED</div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button id="pollRefreshBtn" class="btn btn-outline btn-sm">Refresh</button>
+              </div>
+            </div>
+
+            <div class="mt-2">
+              <div id="pollTitle" class="text-2xl font-extrabold">Secret Poll for Silly Stuff Soon</div>
+              <div id="pollSubtitle" class="text-sm opacity-70 mt-1"></div>
+            </div>
+
+            <div id="pollMsg" class="text-sm mt-2 opacity-80"></div>
+
+            <div class="mt-4">
+              <div class="text-sm opacity-70 mb-2">Current Top Bans</div>
+              <div id="pollTop" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <div class="mt-4">
+              <div class="text-sm opacity-70 mb-2">Totals</div>
+              <div id="pollTotals" class="space-y-2"></div>
+
+              <!-- Poll paging (5 at a time) -->
+              <div class="mt-4 flex items-center justify-between">
+                <button id="pollPrev" class="btn btn-sm btn-outline" disabled>
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <div id="pollPageInfo" class="text-sm opacity-70">Page 1 of 1</div>
+                <button id="pollNext" class="btn btn-sm btn-outline" disabled>
+                  <i class="fa-solid fa-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
 
       </div>
 
@@ -169,9 +189,24 @@
       <div class="lg:col-span-3 lg:sticky lg:top-4 space-y-4">
         <div class="card bg-base-200 shadow">
           <div class="card-body">
+            <div class="text-xl font-bold">Redeems</div>
+            <div class="opacity-70 text-sm">
+              Spending is disabled for now. This will be enabled later.
+            </div>
+            <div class="mt-3 grid gap-2">
+              <button class="btn btn-secondary btn-disabled">🎲 ??? (1000)</button>
+              <button class="btn btn-secondary btn-disabled">🔁 ??? (200)</button>
+              <button class="btn btn-secondary btn-disabled">📜 ??? (100)</button>
+              <button class="btn btn-secondary btn-disabled">📣 ??? (50)</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-200 shadow">
+          <div class="card-body">
             <div class="text-lg font-bold">Tip</div>
             <div class="text-sm opacity-70">
-              Use the dropdown to switch between leaderboards.
+              Use the dropdown up top to switch between the main Leaderboard & Tournament Ranks for Each Game.
             </div>
           </div>
         </div>
@@ -180,8 +215,496 @@
     </div>
   </div>
 
-  <!-- YOUR EXISTING JS FILE / SCRIPT BLOCK GOES HERE -->
-  <!-- NOTHING WAS REMOVED OR MODIFIED -->
+<script>
+/** ====== CONFIG ====== **/
+const API_BASE = "https://script.google.com/macros/s/AKfycbwg_pn2J8399br-rnzHT36BG2JtIgB1nPEfya9PTV9TD__kwidzJUZZqRfb-o7I5baHkA/exec";
+const TWITCH_CLIENT_ID = "h450xh8v0w6osff946wcqnb8vr2st4";
+const TOURNAMENT_ID = "DGIL_NEXT";
 
+/** Boards shown in dropdown **/
+const BOARDS = [
+  { id: "general", label: "Leaderboard (General)" },
+  { id: "rivals2", label: "Rivals of Aether 2" },
+  { id: "rivals1", label: "Rivals of Aether" },
+  { id: "nasb2",  label: "Nickelodeon All-Star Brawl 2" }
+];
+
+let currentBoard = localStorage.getItem("loaf_board") || "general";
+if (!BOARDS.some(b => b.id === currentBoard)) {
+  currentBoard = "general";
+  localStorage.setItem("loaf_board", "general");
+}
+
+const PAGE_SIZE = 12;
+let lbPage = 1;
+let lastLeaderboardData = [];
+let lastLeaderboardHash = "";
+
+/** Poll state **/
+const POLL_PAGE_SIZE = 5;
+let pollPage = 1;
+let pollCache = null;
+let pollExpandedId = null;
+let voteBusy = false;
+
+/** ====== HELPERS ====== **/
+const $ = (id) => document.getElementById(id);
+const getToken = () => sessionStorage.getItem("twitch_token");
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (m) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[m]));
+}
+
+function setStatus(msg) { $("status").textContent = msg || ""; }
+
+function updateAuthButtonUI() {
+  const hasToken = !!getToken();
+  $("authBtnText").textContent = hasToken ? "Logout" : "Login";
+  $("authBtn").classList.toggle("btn-error", hasToken);
+  $("authBtn").classList.toggle("btn-primary", !hasToken);
+}
+
+/** KEEP your leaderboard icons exactly as you had them **/
+function topIcon(rank) {
+  if (rank === 1) return '<i class="fa-solid fa-crown text-yellow-400"></i>';
+  if (rank === 2) return '<i class="fa-solid fa-medal text-gray-300"></i>';
+  if (rank === 3) return '<i class="fa-solid fa-medal text-orange-400"></i>';
+  return '<i class="fa-solid fa-user opacity-60"></i>';
+}
+
+function apiGet(route, params = {}) {
+  const u = new URL(API_BASE);
+  u.searchParams.set("route", route);
+  Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
+  return fetch(u.toString(), { cache: "no-store" }).then(r => r.json());
+}
+
+function apiPost(json){
+  // IMPORTANT: use text/plain to avoid CORS preflight blocking on Apps Script
+  return fetch(API_BASE, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(json)
+  }).then(async (r) => {
+    const t = await r.text();
+    try { return JSON.parse(t); } catch { return { ok:false, error:"Bad JSON response", raw:t }; }
+  });
+}
+
+function uuid(){
+  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  return String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+}
+
+/** ====== LOAF FX ====== **/
+function throwLoafs(){
+  const layer = document.getElementById("fxLayer");
+  if (!layer) return;
+
+  const count = 14;
+  const x = window.innerWidth * 0.5;
+  const y = window.innerHeight * 0.35;
+
+  for (let i=0;i<count;i++){
+    const el = document.createElement("div");
+    el.className = "crumb";
+    el.textContent = "🍞";
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+
+    const dx = (Math.random()*260 - 130) + "px";
+    const dy = (Math.random()*220 - 220) + "px";
+    const rot = (Math.random()*240 - 120) + "deg";
+    el.style.setProperty("--dx", dx);
+    el.style.setProperty("--dy", dy);
+    el.style.setProperty("--rot", rot);
+
+    layer.appendChild(el);
+    setTimeout(() => el.remove(), 750);
+  }
+}
+
+/** ====== LEADERBOARD ====== **/
+function renderLeaderboard() {
+  const el = $("lb");
+  el.innerHTML = "";
+
+  const pages = Math.max(1, Math.ceil(lastLeaderboardData.length / PAGE_SIZE));
+  lbPage = Math.min(Math.max(1, lbPage), pages);
+
+  const start = (lbPage - 1) * PAGE_SIZE;
+  const slice = lastLeaderboardData.slice(start, start + PAGE_SIZE);
+
+  slice.forEach((p, i) => {
+    const rank = start + i + 1;
+    const name = p.display_name || p.twitch_login || "";
+    const pts = (p.points ?? 0);
+
+    el.innerHTML += `
+      <div class="flex items-center justify-between bg-base-300 rounded-xl px-4 py-3">
+        <div class="flex items-center gap-3">
+          ${topIcon(rank)}
+          <div class="font-bold">#${rank}</div>
+          <div>${escapeHtml(name)}</div>
+        </div>
+        <div class="badge badge-primary text-lg">${pts}</div>
+      </div>
+    `;
+  });
+
+  $("lbPageInfo").textContent = `Page ${lbPage} of ${pages}`;
+  $("lbPrev").disabled = lbPage <= 1;
+  $("lbNext").disabled = lbPage >= pages;
+}
+
+async function refreshLeaderboard({quietIfUnchanged=true} = {}) {
+  const firstLoad = (lastLeaderboardHash === "");
+  if (firstLoad) setStatus("Loading leaderboard...");
+
+  const j = await apiGet("leaderboard", { board: currentBoard });
+  const data = j.data || [];
+  const h = JSON.stringify(data);
+
+  if (!quietIfUnchanged || firstLoad || h !== lastLeaderboardHash) {
+    lastLeaderboardHash = h;
+    lastLeaderboardData = data;
+    $("updated").textContent = j.updated ? `Updated: ${new Date(j.updated).toLocaleTimeString()}` : "";
+    renderLeaderboard();
+    setStatus("");
+  } else {
+    setStatus("");
+  }
+}
+
+/** ====== ACCOUNT (ME) ====== **/
+async function refreshMe() {
+  if (!getToken()) {
+    $("acctLoading").classList.add("hidden");
+    $("meCard").classList.add("hidden");
+    $("loginHint").classList.remove("hidden");
+    updateAuthButtonUI();
+    return;
+  }
+
+  updateAuthButtonUI();
+  $("loginHint").classList.add("hidden");
+  $("meCard").classList.add("hidden");
+  $("acctLoading").classList.remove("hidden");
+
+  try {
+    const r = await fetch("https://api.twitch.tv/helix/users", {
+      headers: {
+        "Authorization": "Bearer " + getToken(),
+        "Client-Id": TWITCH_CLIENT_ID
+      }
+    });
+
+    if (!r.ok) {
+      sessionStorage.removeItem("twitch_token");
+      updateAuthButtonUI();
+      $("acctLoading").classList.add("hidden");
+      $("meCard").classList.add("hidden");
+      $("loginHint").classList.remove("hidden");
+      setStatus("Session expired. Please login again.");
+      return;
+    }
+
+    const tj = await r.json();
+    const me = tj.data?.[0];
+    if (!me) throw new Error("Could not read Twitch user.");
+
+    $("meName").textContent = me.display_name;
+
+    const g = await apiGet("me", {
+      twitch_user_id: me.id,
+      twitch_login: me.login,
+      display_name: me.display_name,
+      board: "general"
+    });
+
+    $("meTotalPoints").textContent = (g.points ?? 0);
+    $("meRank").textContent = g.rank ? ("#" + g.rank) : "—";
+
+    $("acctLoading").classList.add("hidden");
+    $("meCard").classList.remove("hidden");
+  } catch (err) {
+    $("acctLoading").classList.add("hidden");
+    $("meCard").classList.add("hidden");
+    $("loginHint").classList.remove("hidden");
+    setStatus("Could not load account info. Try logging out and back in.");
+  }
+}
+
+/** ===== Poll UI ===== **/
+function setPollMsg(msg, isErr=false){
+  $("pollMsg").textContent = msg || "";
+  $("pollMsg").classList.toggle("text-error", !!isErr);
+}
+
+function setOpenClosedBadge(isOpen){
+  const b = $("pollStateBadge");
+  if (isOpen){
+    b.textContent = "OPEN";
+    b.className = "badge badge-outline px-3 py-3 font-bold border-success text-success";
+  } else {
+    b.textContent = "CLOSED";
+    b.className = "badge badge-outline px-3 py-3 font-bold border-error text-error";
+  }
+}
+
+function renderTopBadges(names){
+  const wrap = $("pollTop");
+  wrap.innerHTML = "";
+  if (!names || !names.length){
+    wrap.innerHTML = `<span class="opacity-70">—</span>`;
+    return;
+  }
+  names.forEach((n, i) => {
+    const badge = document.createElement("div");
+    badge.className = "badge badge-error badge-lg gap-2";
+    badge.textContent = `#${i+1} ${n}`;
+    wrap.appendChild(badge);
+  });
+}
+
+function getSortedOptions(options){
+  const arr = (options || []).map((o, i) => ({...o, _idx:i}));
+  const maxPts = Math.max(0, ...arr.map(x => Number(x.points||0)));
+
+  if (maxPts === 0){
+    return arr.sort((a,b)=> a._idx - b._idx);
+  }
+
+  return arr.sort((a,b)=>{
+    const dp = Number(b.points||0) - Number(a.points||0);
+    if (dp !== 0) return dp;
+    return a._idx - b._idx;
+  });
+}
+
+function renderPollTotals(){
+  const wrap = $("pollTotals");
+  wrap.innerHTML = "";
+
+  const options = getSortedOptions(pollCache?.options || []);
+  if (!options.length){
+    wrap.innerHTML = `<div class="opacity-70 text-sm">No options found.</div>`;
+    $("pollPageInfo").textContent = "Page 1 of 1";
+    $("pollPrev").disabled = true;
+    $("pollNext").disabled = true;
+    return;
+  }
+
+  const pages = Math.max(1, Math.ceil(options.length / POLL_PAGE_SIZE));
+  pollPage = Math.min(Math.max(1, pollPage), pages);
+
+  const start = (pollPage - 1) * POLL_PAGE_SIZE;
+  const slice = options.slice(start, start + POLL_PAGE_SIZE);
+
+  $("pollPageInfo").textContent = `Page ${pollPage} of ${pages}`;
+  $("pollPrev").disabled = pollPage <= 1;
+  $("pollNext").disabled = pollPage >= pages;
+
+  const maxPts = Math.max(1, ...options.map(o => Number(o.points||0)));
+
+  slice.forEach(o => {
+    const pts = Number(o.points || 0);
+    const pct = Math.round((pts / maxPts) * 100);
+    const expanded = (pollExpandedId === o.character_id);
+
+    wrap.innerHTML += `
+      <div class="charRow bg-base-300 rounded-xl px-3 py-3">
+        <button class="w-full text-left flex items-center justify-between gap-3"
+                onclick="togglePollRow('${escapeHtml(o.character_id)}')">
+          <div class="flex items-center gap-3 min-w-0">
+            <img src="${escapeHtml(o.icon_path || "")}"
+                 onerror="this.style.display='none'"
+                 class="w-10 h-10 rounded-xl object-cover bg-base-200" alt="">
+            <div class="min-w-0">
+              <div class="font-bold truncate">${escapeHtml(o.character_name)}</div>
+              <div class="w-56 max-w-[50vw] bg-base-200 rounded-full h-2 mt-2 overflow-hidden">
+                <div class="h-2 bg-primary" style="width:${pct}%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <div class="badge badge-secondary text-lg">${pts}</div>
+            <i class="fa-solid ${expanded ? "fa-chevron-up" : "fa-chevron-down"} opacity-70"></i>
+          </div>
+        </button>
+
+        ${expanded ? `
+          <div class="mt-3 flex items-center gap-2 flex-wrap">
+            <input id="voteAmt_${escapeHtml(o.character_id)}"
+                   type="number" min="1" step="1"
+                   class="input input-bordered w-32"
+                   placeholder="Amount">
+            <button class="btn btn-sm btn-primary"
+                    onclick="submitVote('${escapeHtml(o.character_id)}')">
+              Submit
+            </button>
+            <div class="text-sm opacity-70">Spend Loaf Points to vote.</div>
+          </div>
+        ` : ``}
+      </div>
+    `;
+  });
+}
+
+window.togglePollRow = function(character_id){
+  pollExpandedId = (pollExpandedId === character_id) ? null : character_id;
+  renderPollTotals();
+};
+
+window.submitVote = async function(character_id){
+  if (voteBusy) return;
+
+  if (!getToken()){
+    setPollMsg("Login with Twitch first.", true);
+    return;
+  }
+  if (pollCache && pollCache.is_open === false){
+    setPollMsg("Poll is closed.", true);
+    return;
+  }
+
+  const input = document.getElementById(`voteAmt_${character_id}`);
+  const amt = parseInt(input?.value || "", 10);
+  if (!Number.isFinite(amt) || amt <= 0){
+    setPollMsg("Enter an amount (example: 25).", true);
+    return;
+  }
+
+  voteBusy = true;
+  setPollMsg("Submitting…");
+
+  try {
+    const res = await apiPost({
+      route: "vote",
+      tournament_id: TOURNAMENT_ID,
+      character_id,
+      amount: amt,
+      token: getToken(),
+      spend_id: uuid()
+    });
+
+    if (!res.ok){
+      if (res.current_points !== undefined){
+        setPollMsg(`Not enough Loaf Points. You have ${res.current_points}.`, true);
+      } else if (res.error === "poll_closed") {
+        setPollMsg("Poll is closed.", true);
+      } else {
+        setPollMsg(res.error || "Vote failed.", true);
+      }
+      return;
+    }
+
+    if (res.deduped){
+      setPollMsg("Already processed (safe double-click protection).");
+    } else {
+      setPollMsg("Vote counted! 🍞");
+      throwLoafs();
+    }
+
+    if (res.poll && res.poll.ok){
+      pollCache = res.poll;
+      setOpenClosedBadge(!!pollCache.is_open);
+      $("pollTitle").textContent = pollCache.title || "Secret Poll";
+      $("pollSubtitle").textContent = pollCache.subtitle || "";
+      renderTopBadges(pollCache.top || []);
+      renderPollTotals();
+    } else {
+      await refreshPoll();
+    }
+
+    await refreshMe();
+  } finally {
+    voteBusy = false;
+  }
+};
+
+async function refreshPoll(){
+  const j = await apiGet("poll", { tournament_id: TOURNAMENT_ID });
+  if (!j.ok){
+    setPollMsg(j.error || "Could not load poll.", true);
+    return;
+  }
+  pollCache = j;
+
+  setOpenClosedBadge(!!j.is_open);
+  $("pollTitle").textContent = j.title || "Secret Poll for Silly Stuff Soon";
+  $("pollSubtitle").textContent = j.subtitle || "";
+  renderTopBadges(j.top || []);
+  renderPollTotals();
+  setPollMsg("");
+}
+
+/** ====== BOARDS DROPDOWN ====== **/
+function buildBoards() {
+  const sel = $("boardSelect");
+  sel.innerHTML = "";
+  BOARDS.forEach(b => {
+    const o = document.createElement("option");
+    o.value = b.id;
+    o.textContent = b.label;
+    if (b.id === currentBoard) o.selected = true;
+    sel.appendChild(o);
+  });
+
+  sel.onchange = () => {
+    currentBoard = sel.value;
+    localStorage.setItem("loaf_board", currentBoard);
+    lbPage = 1;
+    refreshLeaderboard({quietIfUnchanged:false});
+  };
+}
+
+/** ====== AUTH BUTTON ====== **/
+$("authBtn").onclick = () => {
+  if (getToken()) {
+    sessionStorage.removeItem("twitch_token");
+    updateAuthButtonUI();
+    setStatus("Logged out.");
+    refreshMe();
+    return;
+  }
+
+  const state = crypto.getRandomValues(new Uint32Array(4)).join("-");
+  sessionStorage.setItem("oauth_state", state);
+
+  const redirect = location.origin + location.pathname.replace(/\/[^\/]*$/, "/callback.html");
+  const u = new URL("https://id.twitch.tv/oauth2/authorize");
+  u.searchParams.set("client_id", TWITCH_CLIENT_ID);
+  u.searchParams.set("redirect_uri", redirect);
+  u.searchParams.set("response_type", "token");
+  u.searchParams.set("state", state);
+  location.href = u.toString();
+};
+
+/** ====== Pagination ====== **/
+$("lbPrev").onclick = () => { lbPage--; renderLeaderboard(); };
+$("lbNext").onclick = () => { lbPage++; renderLeaderboard(); };
+
+$("pollPrev").onclick = () => { pollPage--; renderPollTotals(); };
+$("pollNext").onclick = () => { pollPage++; renderPollTotals(); };
+$("pollRefreshBtn").onclick = () => refreshPoll();
+
+/** ====== Init ====== **/
+(async function init() {
+  updateAuthButtonUI();
+  buildBoards();
+
+  await refreshLeaderboard({quietIfUnchanged:false});
+  await refreshMe();
+  await refreshPoll();
+
+  setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
+  setInterval(() => refreshMe(), 30000);
+  setInterval(() => refreshPoll(), 30000);
+})();
+</script>
 </body>
 </html>
