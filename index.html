@@ -27,7 +27,7 @@
     }
     .charRow:hover { outline: 2px solid rgba(255,255,255,.07); }
 
-    /* ===== Loading overlays ===== */
+    /* ===== Loading overlays (Leaderboard only) ===== */
     .overlayWrap { position: relative; }
     .loadingOverlay {
       position: absolute; inset: 0;
@@ -40,7 +40,11 @@
 
     /* Hide poll UI until JS says it's ready (prevents flash of CLOSED/Totals/etc.) */
     #pollContent { display: none; }
+    #pollLoadingBox { display: none; }
     body.poll-ready #pollContent { display: block; }
+    body.poll-ready #pollLoadingBox { display: none; }
+    body.poll-loading #pollLoadingBox { display: block; }
+    body.poll-loading #pollContent { display: none; }
   </style>
 </head>
 
@@ -163,13 +167,26 @@
         </div>
 
         <!-- POLL -->
-        <div class="card bg-base-200 shadow overlayWrap" id="pollCard">
-          <!-- overlay (shows immediately on load) -->
-          <div id="pollOverlay" class="loadingOverlay">
-            <div class="text-center">
-              <div id="pollOverlayText" class="font-bold text-lg">Loading poll…</div>
-              <div class="mt-2">
-                <span id="pollOverlaySpinner" class="loading loading-spinner loading-md"></span>
+        <div class="card bg-base-200 shadow" id="pollCard">
+
+          <!-- Boxed loader that lives INSIDE the poll card -->
+          <div id="pollLoadingBox" class="card-body">
+            <div class="flex items-start justify-between gap-3 flex-wrap">
+              <div class="flex items-center gap-2">
+                <div class="badge badge-outline px-3 py-3 font-bold opacity-60">—</div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="btn btn-outline btn-sm btn-disabled">
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-3 bg-base-300 rounded-xl p-5">
+              <div class="text-lg font-bold">Loading poll…</div>
+              <div class="mt-2 flex items-center gap-3 opacity-70">
+                <span class="loading loading-spinner loading-md"></span>
+                <span class="text-sm">Please wait…</span>
               </div>
             </div>
           </div>
@@ -198,7 +215,7 @@
             <div id="pollMsg" class="text-sm mt-2 opacity-80"></div>
 
             <div class="mt-4">
-              <div class="text-sm opacity-70 mb-2">Current Top 3</div>
+              <div class="text-sm opacity-70 mb-2">Current Top Bans</div>
               <div id="pollTop" class="flex flex-wrap gap-2"></div>
             </div>
 
@@ -342,10 +359,11 @@ function showLbLoading(show=true){
   $("lbOverlay").classList.toggle("hidden", !show);
 }
 
-function showPollLoading(show=true, text="Loading poll…"){
-  const ov = $("pollOverlay");
-  $("pollOverlayText").textContent = text;
-  ov.classList.toggle("hidden", !show);
+/** Poll loader states **/
+function setPollLoadingState(state){
+  // state: "loading" | "ready"
+  document.body.classList.toggle("poll-loading", state === "loading");
+  document.body.classList.toggle("poll-ready", state === "ready");
 }
 
 /** ====== LOAF FX ====== **/
@@ -413,7 +431,6 @@ async function refreshLeaderboard({quietIfUnchanged=true} = {}) {
   const firstLoad = (lastLeaderboardHash === "");
   if (firstLoad) setStatus("Loading leaderboard...");
 
-  // show overlay whenever we are switching boards OR first load
   if (firstLoad || !quietIfUnchanged) showLbLoading(true);
 
   try {
@@ -498,7 +515,7 @@ async function refreshMe() {
 function setPollMsg(msg, isErr=false){
   $("pollMsg").textContent = msg || "";
   $("pollMsg").classList.toggle("text-error", !!isErr);
-  $("pollMsg").classList.toggle("font-bold", !!msg);  // make status bold when shown
+  $("pollMsg").classList.toggle("font-bold", !!msg);
 }
 
 function setOpenClosedBadge(isOpen){
@@ -701,14 +718,12 @@ window.submitVote = async function(character_id){
       renderTopBadges(pollCache.top || []);
       renderPollTotals();
     } else {
-      await refreshPoll(); // fallback
+      await refreshPoll({showRefreshing:false});
     }
 
     await refreshMe();
   } finally {
-    // Re-enable submit (so they can vote again if they want)
     setSubmitUI(character_id, false);
-
     voteBusy = false;
     $("pollRefreshBtn").disabled = false;
     setPollRefreshUI(false);
@@ -716,13 +731,8 @@ window.submitVote = async function(character_id){
 };
 
 async function refreshPoll({showRefreshing=false} = {}){
-  // show overlay while poll loads
-  if (!document.body.classList.contains("poll-ready")) {
-    showPollLoading(true, "Loading poll…");
-  } else if (showRefreshing) {
-    showPollLoading(true, "Refreshing…");
-  }
-
+  // Use boxed loader inside the poll card
+  setPollLoadingState("loading");
   if (showRefreshing) setPollRefreshUI(true);
 
   try {
@@ -734,17 +744,16 @@ async function refreshPoll({showRefreshing=false} = {}){
 
     pollCache = j;
 
-    // Now that we have real data, reveal poll UI and hide overlay
-    document.body.classList.add("poll-ready");
-
     setOpenClosedBadge(!!j.is_open);
     $("pollTitle").textContent = j.title || "Secret Poll for Silly Stuff Soon";
     $("pollSubtitle").textContent = j.subtitle || "";
     renderTopBadges(j.top || []);
     renderPollTotals();
     setPollMsg("");
+
+    // Reveal real poll UI
+    setPollLoadingState("ready");
   } finally {
-    showPollLoading(false);
     if (showRefreshing) setPollRefreshUI(false);
   }
 }
@@ -765,7 +774,6 @@ function buildBoards() {
     currentBoard = sel.value;
     localStorage.setItem("loaf_board", currentBoard);
     lbPage = 1;
-    // show loading overlay when switching boards
     showLbLoading(true);
     await refreshLeaderboard({quietIfUnchanged:false});
   };
@@ -810,9 +818,10 @@ $("pollRefreshBtn").onclick = () => {
   updateAuthButtonUI();
   buildBoards();
 
-  // show both loaders immediately so it's never blank / never flashes defaults
+  // Start both in “loading” state immediately
   showLbLoading(true);
-  showPollLoading(true, "Loading poll…");
+  setPollLoadingState("loading");
+  setStatus("Loading leaderboard...");
 
   await refreshLeaderboard({quietIfUnchanged:false});
   await refreshMe();
