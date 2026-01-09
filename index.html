@@ -163,7 +163,7 @@
         <div class="card bg-base-200 shadow">
           <div class="card-body cardLoadingWrap" id="pollCardWrap">
 
-            <!-- Loading overlay (shows FIRST, poll content hidden until loaded) -->
+            <!-- Loading overlay -->
             <div id="pollLoadingOverlay" class="cardLoadingOverlay hidden">
               <div class="flex flex-col items-center gap-2">
                 <span class="loading loading-spinner loading-lg"></span>
@@ -171,7 +171,7 @@
               </div>
             </div>
 
-            <!-- ✅ Poll UI hidden until refreshPoll succeeds -->
+            <!-- Poll UI hidden until loaded -->
             <div id="pollContent" class="hidden">
 
               <!-- OPEN/CLOSED badge ABOVE title -->
@@ -429,7 +429,8 @@ async function refreshLeaderboard({quietIfUnchanged=true, forceLoadingUI=false} 
   const firstLoad = (lastLeaderboardHash === "");
   if (firstLoad) setStatus("Loading leaderboard...");
 
-  if (forceLoadingUI) showLbLoading(true);
+  // ✅ show spinner on first load OR when forced (board change)
+  if (firstLoad || forceLoadingUI) showLbLoading(true);
 
   try {
     const j = await apiGet("leaderboard", { board: currentBoard });
@@ -446,7 +447,7 @@ async function refreshLeaderboard({quietIfUnchanged=true, forceLoadingUI=false} 
       setStatus("");
     }
   } finally {
-    if (forceLoadingUI) showLbLoading(false);
+    if (firstLoad || forceLoadingUI) showLbLoading(false);
   }
 }
 
@@ -665,8 +666,8 @@ window.submitVote = async function(character_id){
   }
 
   voteBusy = true;
-  setPollRefreshBusy(true);              // disable refresh during vote
-  setVoteButtonBusy(character_id, true); // disable submit + show spinner
+  setPollRefreshBusy(true);
+  setVoteButtonBusy(character_id, true);
   setPollMsg("Submitting your vote…", false, true);
 
   try {
@@ -697,7 +698,6 @@ window.submitVote = async function(character_id){
       throwLoafs();
     }
 
-    // Update poll immediately from response snapshot (fast)
     if (res.poll && res.poll.ok){
       pollCache = res.poll;
       setOpenClosedBadge(!!pollCache.is_open);
@@ -709,9 +709,7 @@ window.submitVote = async function(character_id){
       await refreshPoll({forceLoadingUI:true});
     }
 
-    // Refresh user's points box
     await refreshMe();
-
   } finally {
     voteBusy = false;
     setPollRefreshBusy(false);
@@ -722,9 +720,10 @@ window.submitVote = async function(character_id){
 async function refreshPoll({forceLoadingUI=false} = {}){
   const firstLoad = !pollCache;
 
-  // Hide poll content until it loads successfully (prevents flashing CLOSED/totals/etc)
+  // ✅ do NOT show CLOSED/totals/etc until poll is loaded
   if (firstLoad) showPollContent(false);
 
+  // ✅ show spinner on first load OR when forced (refresh)
   if (firstLoad || forceLoadingUI) showPollLoading(true, forceLoadingUI ? "Refreshing poll…" : "Loading poll…");
 
   try {
@@ -743,9 +742,7 @@ async function refreshPoll({forceLoadingUI=false} = {}){
     renderPollTotals();
     setPollMsg("");
 
-    // Show the poll UI only after we have real data
     showPollContent(true);
-
   } finally {
     if (firstLoad || forceLoadingUI) showPollLoading(false);
   }
@@ -817,22 +814,29 @@ $("pollRefreshBtn").onclick = async () => {
   updateAuthButtonUI();
   buildBoards();
 
-  // Leaderboard first load spinner (optional; overlay exists but we only show on switch)
-  await refreshLeaderboard({quietIfUnchanged:false});
+  // ✅ LEADERBOARD should start as loading (spinner overlay)
+  showLbLoading(true);
+  try {
+    await refreshLeaderboard({quietIfUnchanged:false});
+  } finally {
+    // refreshLeaderboard also hides it, but this guarantees no blank flash
+    showLbLoading(false);
+  }
+
   await refreshMe();
 
-  // Poll should start as LOADING (no “CLOSED / totals / top bans” flash)
+  // ✅ POLL should start as loading and not show default UI until loaded
   showPollContent(false);
   showPollLoading(true, "Loading poll…");
   try {
     await refreshPoll({forceLoadingUI:false});
   } finally {
+    // refreshPoll hides it on success, but keep safe
     showPollLoading(false);
   }
 
   setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
   setInterval(() => refreshMe(), 30000);
-  // Poll refresh in background should NOT show overlay; stays smooth
   setInterval(() => refreshPoll({forceLoadingUI:false}), 30000);
 })();
 </script>
