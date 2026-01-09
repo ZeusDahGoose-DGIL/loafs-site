@@ -26,6 +26,16 @@
       to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)); opacity: 0; }
     }
     .charRow:hover { outline: 2px solid rgba(255,255,255,.07); }
+
+    /* Leaderboard loading overlay */
+    .lbLoading {
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      border-radius: 1rem;
+      background: rgba(0,0,0,0.15);
+      outline: 2px solid rgba(255,255,255,.06);
+    }
   </style>
 </head>
 
@@ -298,6 +308,30 @@ function uuid(){
   return String(Date.now()) + "-" + Math.random().toString(16).slice(2);
 }
 
+/** ====== NEW: Leaderboard Loading UI ====== **/
+function showLbLoading(msg="Loading…"){
+  const el = $("lb");
+  if (!el) return;
+  el.innerHTML = `
+    <div class="lbLoading">
+      <div class="flex flex-col items-center gap-3">
+        <span class="loading loading-spinner loading-lg"></span>
+        <div class="text-sm opacity-70">${escapeHtml(msg)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function showLbError(msg="Could not load leaderboard."){
+  const el = $("lb");
+  if (!el) return;
+  el.innerHTML = `
+    <div class="lbLoading">
+      <div class="text-sm text-error font-semibold">${escapeHtml(msg)}</div>
+    </div>
+  `;
+}
+
 /** ====== LOAF FX ====== **/
 function throwLoafs(){
   const layer = document.getElementById("fxLayer");
@@ -361,19 +395,27 @@ function renderLeaderboard() {
 
 async function refreshLeaderboard({quietIfUnchanged=true} = {}) {
   const firstLoad = (lastLeaderboardHash === "");
-  if (firstLoad) setStatus("Loading leaderboard...");
+  if (!quietIfUnchanged || firstLoad) {
+    showLbLoading("Loading leaderboard…");
+    $("updated").textContent = "";
+  }
 
-  const j = await apiGet("leaderboard", { board: currentBoard });
-  const data = j.data || [];
-  const h = JSON.stringify(data);
+  try {
+    const j = await apiGet("leaderboard", { board: currentBoard });
+    const data = j.data || [];
+    const h = JSON.stringify(data);
 
-  if (!quietIfUnchanged || firstLoad || h !== lastLeaderboardHash) {
-    lastLeaderboardHash = h;
-    lastLeaderboardData = data;
-    $("updated").textContent = j.updated ? `Updated: ${new Date(j.updated).toLocaleTimeString()}` : "";
-    renderLeaderboard();
-    setStatus("");
-  } else {
+    if (!quietIfUnchanged || firstLoad || h !== lastLeaderboardHash) {
+      lastLeaderboardHash = h;
+      lastLeaderboardData = data;
+      $("updated").textContent = j.updated ? `Updated: ${new Date(j.updated).toLocaleTimeString()}` : "";
+      renderLeaderboard();
+      setStatus("");
+    } else {
+      setStatus("");
+    }
+  } catch (err) {
+    showLbError("Leaderboard failed to load. Try again.");
     setStatus("");
   }
 }
@@ -658,6 +700,10 @@ function buildBoards() {
     currentBoard = sel.value;
     localStorage.setItem("loaf_board", currentBoard);
     lbPage = 1;
+
+    // NEW: show loading immediately on board switch
+    showLbLoading("Loading leaderboard…");
+
     refreshLeaderboard({quietIfUnchanged:false});
   };
 }
