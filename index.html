@@ -11,6 +11,21 @@
   <link rel="icon" type="image/png" href="assets/favicon.png">
 
   <style>
+    /* ===== Guardrails: stop sideways page scroll on mobile ===== */
+    html, body { overflow-x: hidden; }
+    img, svg, video, canvas { max-width: 100%; height: auto; }
+
+    /* Horizontal-scroll tabs (mobile) */
+    .tabsScroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;           /* Firefox */
+      overscroll-behavior-x: contain;  /* prevent body sideways drag */
+    }
+    .tabsScroll::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+    .tabsScroll .tab { white-space: nowrap; }
+
     /* FX layer for loaf toss */
     #fxLayer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 9999; }
     .crumb {
@@ -25,6 +40,7 @@
     @keyframes fly {
       to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)); opacity: 0; }
     }
+
     .charRow:hover { outline: 2px solid rgba(255,255,255,.07); }
 
     /* Overlay loader (darken + centered text) */
@@ -39,9 +55,6 @@
       justify-content: center;
       z-index: 50;
     }
-
-    /* Small helper: keep tab row nicely separated */
-    .tabsWrap { margin-top: .25rem; }
   </style>
 </head>
 
@@ -50,7 +63,7 @@
 
   <div class="max-w-7xl mx-auto p-6 space-y-4">
 
-    <!-- LOGO + TITLE (STAYS ON EVERY TAB) -->
+    <!-- LOGO + TITLE (always visible) -->
     <div class="flex flex-col items-center text-center mb-2">
       <img src="assets/logo.png" class="h-56 w-auto object-contain mb-3" alt="Logo" />
       <h1 class="text-4xl font-extrabold flex items-center gap-2">🍞 Loaf Points</h1>
@@ -60,7 +73,7 @@
       <div id="status" class="text-sm opacity-70 mt-1"></div>
     </div>
 
-    <!-- TOP RIGHT LOGIN (STAYS ON EVERY TAB) -->
+    <!-- Login button (always visible) -->
     <div class="flex justify-end">
       <button id="authBtn" class="btn btn-primary">
         <i class="fa-brands fa-twitch"></i>
@@ -68,43 +81,42 @@
       </button>
     </div>
 
-    <!-- TABS (DaisyUI Option A) -->
-    <div class="tabs tabs-boxed tabsWrap">
-      <a class="tab" id="tab_overview"      data-tab="overview">Overview</a>
-      <a class="tab" id="tab_leaderboards"  data-tab="leaderboards">Leaderboards</a>
-      <a class="tab" id="tab_prizepool"     data-tab="prizepool">DGIL Prize Pool</a>
-      <a class="tab" id="tab_voting"        data-tab="voting">Voting / Redeems</a>
-      <a class="tab" id="tab_howtoloaf"     data-tab="howtoloaf">How to Loaf</a>
+    <!-- Tabs (always visible) -->
+    <div class="tabs tabs-boxed tabsScroll w-full bg-base-200/60 rounded-2xl p-2">
+      <a role="tab" class="tab tab-active" data-tab="overview">Overview</a>
+      <a role="tab" class="tab" data-tab="leaderboards">Leaderboards</a>
+      <a role="tab" class="tab" data-tab="prizepool">DGIL Prize Pool</a>
+      <a role="tab" class="tab" data-tab="voting">Voting / Redeems</a>
+      <a role="tab" class="tab" data-tab="howtoloaf">How to Loaf</a>
     </div>
 
-    <!-- ========================= -->
-    <!-- TAB PANELS (UNDER TABS)   -->
-    <!-- ========================= -->
+    <!-- ===================== TAB PANELS ===================== -->
 
     <!-- OVERVIEW -->
-    <section id="panel_overview" class="mt-2">
+    <section id="tab_overview" class="tabPanel">
       <div class="card bg-base-200 shadow">
         <div class="card-body">
-          <div class="text-2xl font-extrabold">DGIL (Next)</div>
-          <div class="opacity-70">the goose is loose</div>
+          <div class="text-3xl font-extrabold">DGIL (Next)</div>
+          <div class="opacity-70 mt-1">the goose is loose</div>
         </div>
       </div>
     </section>
 
     <!-- LEADERBOARDS -->
-    <section id="panel_leaderboards" class="mt-2 hidden">
-      <!-- Board dropdown row (ONLY on Leaderboards tab) -->
-      <div class="flex justify-end mb-3">
-        <select id="boardSelect" class="select select-bordered"></select>
+    <section id="tab_leaderboards" class="tabPanel hidden">
+
+      <!-- board dropdown row (leaderboards-only) -->
+      <div class="flex justify-end">
+        <div class="flex items-center gap-2">
+          <select id="boardSelect" class="select select-bordered"></select>
+        </div>
       </div>
 
-      <!-- MAIN GRID for leaderboards -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
 
-        <!-- LEFT PANEL -->
-        <div class="lg:col-span-3 lg:sticky lg:top-4 space-y-4">
+        <!-- LEFT: Account -->
+        <div class="lg:col-span-3 lg:sticky lg:top-4 space-y-4 min-w-0">
 
-          <!-- ACCOUNT SLOT (fixed height so columns align) -->
           <div class="min-h-[260px]">
 
             <!-- Loading -->
@@ -152,12 +164,11 @@
               </div>
             </div>
           </div>
+
         </div>
 
-        <!-- CENTER -->
-        <div class="lg:col-span-9 space-y-4">
-
-          <!-- LEADERBOARD -->
+        <!-- CENTER: Leaderboard -->
+        <div class="lg:col-span-6 space-y-4 min-w-0">
           <div class="card bg-base-200 shadow">
             <div class="card-body relative">
               <div class="flex items-center justify-between">
@@ -165,7 +176,7 @@
                 <div id="updated" class="text-sm opacity-70"></div>
               </div>
 
-              <!-- First-load loading box (replaces list ONLY on first load) -->
+              <!-- First-load loading box -->
               <div id="lbLoadingBox" class="mt-3 bg-base-300 rounded-xl px-4 py-4">
                 <div class="flex items-center gap-3">
                   <span class="loading loading-spinner loading-md"></span>
@@ -198,40 +209,45 @@
 
             </div>
           </div>
+        </div>
 
-          <!-- TIP (under dropdown area, per your request) -->
+        <!-- RIGHT: Tip under dropdown -->
+        <div class="lg:col-span-3 lg:sticky lg:top-4 space-y-4 min-w-0">
           <div class="card bg-base-200 shadow">
             <div class="card-body">
               <div class="text-lg font-bold">Tip</div>
               <div class="text-sm opacity-70">
-                Use the dropdown up top to switch between the main Leaderboard & Tournament Ranks for Each Game.
+                Use the dropdown to switch between the main Leaderboard & Tournament Ranks for Each Game.
               </div>
             </div>
           </div>
-
         </div>
+
       </div>
     </section>
 
     <!-- PRIZE POOL -->
-    <section id="panel_prizepool" class="mt-2 hidden">
+    <section id="tab_prizepool" class="tabPanel hidden">
       <div class="card bg-base-200 shadow">
         <div class="card-body">
-          <div class="text-2xl font-extrabold">The Goose Is Loose Prize Pool</div>
-          <div class="mt-2 text-4xl font-extrabold flex items-center gap-2">
-            <span>💰</span><span id="prizePoolAmt">$0</span>
+          <div class="text-3xl font-extrabold">Dah Goose Is Loose Prize Pool</div>
+          <div class="mt-2 flex items-center gap-2 text-xl">
+            <span>💰</span>
+            <span class="font-bold">$0</span>
           </div>
-          <div class="opacity-70 text-sm mt-1">(You can change this later.)</div>
+          <div class="opacity-70 mt-2 text-sm">
+            (You can edit this later.)
+          </div>
         </div>
       </div>
     </section>
 
     <!-- VOTING / REDEEMS -->
-    <section id="panel_voting" class="mt-2 hidden">
+    <section id="tab_voting" class="tabPanel hidden">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
 
-        <!-- VOTING (POLL) -->
-        <div class="lg:col-span-8">
+        <!-- POLL -->
+        <div class="lg:col-span-8 space-y-4 min-w-0">
           <div class="card bg-base-200 shadow">
             <div class="card-body relative">
 
@@ -279,7 +295,7 @@
                   <div class="text-sm opacity-70 mb-2">Totals</div>
                   <div id="pollTotals" class="space-y-2"></div>
 
-                  <!-- Poll paging (5 at a time) -->
+                  <!-- Poll paging -->
                   <div class="mt-4 flex items-center justify-between">
                     <button id="pollPrev" class="btn btn-sm btn-outline" disabled>
                       <i class="fa-solid fa-chevron-left"></i>
@@ -306,7 +322,7 @@
         </div>
 
         <!-- REDEEMS -->
-        <div class="lg:col-span-4 lg:sticky lg:top-4 space-y-4">
+        <div class="lg:col-span-4 lg:sticky lg:top-4 space-y-4 min-w-0">
           <div class="card bg-base-200 shadow">
             <div class="card-body">
               <div class="text-xl font-bold">Redeems</div>
@@ -326,7 +342,7 @@
             <div class="card-body">
               <div class="text-lg font-bold">Tip</div>
               <div class="text-sm opacity-70">
-                Vote in the poll when it's open, or redeem future Loaf actions here.
+                Vote using Loaf Points — your input won’t get wiped by auto-refresh while you’re typing.
               </div>
             </div>
           </div>
@@ -336,16 +352,18 @@
     </section>
 
     <!-- HOW TO LOAF -->
-    <section id="panel_howtoloaf" class="mt-2 hidden">
+    <section id="tab_howtoloaf" class="tabPanel hidden">
       <div class="card bg-base-200 shadow">
         <div class="card-body">
-          <div class="text-2xl font-extrabold">How to Loaf</div>
-          <div class="mt-2 opacity-70">test 1, 2, 3</div>
+          <div class="text-3xl font-extrabold">How to Loaf</div>
+          <div class="opacity-70 mt-2">test 1</div>
+          <div class="opacity-70">test 2</div>
+          <div class="opacity-70">test 3</div>
         </div>
       </div>
     </section>
 
-  </div>
+  </div><!-- /container -->
 
 <script>
 /** ====== CONFIG ====== **/
@@ -401,6 +419,21 @@ function updateAuthButtonUI() {
   $("authBtn").classList.toggle("btn-error", hasToken);
   $("authBtn").classList.toggle("btn-primary", !hasToken);
 }
+
+/** Tabs switching (hide/show panels only; nothing is deleted) **/
+function setActiveTab(tabKey) {
+  document.querySelectorAll('[data-tab]').forEach(t => {
+    t.classList.toggle('tab-active', t.dataset.tab === tabKey);
+  });
+  document.querySelectorAll('.tabPanel').forEach(p => p.classList.add('hidden'));
+  const panel = document.getElementById('tab_' + tabKey);
+  if (panel) panel.classList.remove('hidden');
+  localStorage.setItem('loaf_active_tab', tabKey);
+}
+
+document.querySelectorAll('[data-tab]').forEach(t => {
+  t.addEventListener('click', () => setActiveTab(t.dataset.tab));
+});
 
 /** KEEP your leaderboard icons exactly as you had them **/
 function topIcon(rank) {
@@ -462,38 +495,6 @@ function throwLoafs(){
   }
 }
 
-/** ====== TABS ====== **/
-const TAB_IDS = ["overview","leaderboards","prizepool","voting","howtoloaf"];
-let currentTab = localStorage.getItem("loaf_tab") || "overview";
-if (!TAB_IDS.includes(currentTab)) currentTab = "overview";
-
-function setTab(tabId, {scrollTop=true, refreshOnShow=true} = {}) {
-  currentTab = tabId;
-  localStorage.setItem("loaf_tab", tabId);
-
-  // active tab styling
-  TAB_IDS.forEach(id => {
-    const t = document.querySelector(`.tab[data-tab="${id}"]`);
-    const p = document.getElementById(`panel_${id}`);
-    if (t) t.classList.toggle("tab-active", id === tabId);
-    if (p) p.classList.toggle("hidden", id !== tabId);
-  });
-
-  if (scrollTop) window.scrollTo({ top: 0, behavior: "smooth" });
-
-  // optional refresh when entering certain tabs (safe, no overlays)
-  if (refreshOnShow) {
-    if (tabId === "leaderboards") {
-      refreshLeaderboard({quietIfUnchanged:true}); // quiet refresh
-      refreshMe(); // update account card if logged in
-    }
-    if (tabId === "voting") {
-      // ensure poll loads when visiting voting
-      if (!pollHasLoadedOnce) refreshPoll({manual:false});
-    }
-  }
-}
-
 /** ====== LEADERBOARD LOADING UI ====== **/
 function showLbFirstLoadBox(show, titleText="Loading leaderboard…"){
   $("lbLoadingTitle").textContent = titleText;
@@ -524,12 +525,12 @@ function renderLeaderboard() {
 
     el.innerHTML += `
       <div class="flex items-center justify-between bg-base-300 rounded-xl px-4 py-3">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 min-w-0">
           ${topIcon(rank)}
-          <div class="font-bold">#${rank}</div>
-          <div>${escapeHtml(name)}</div>
+          <div class="font-bold shrink-0">#${rank}</div>
+          <div class="truncate">${escapeHtml(name)}</div>
         </div>
-        <div class="badge badge-primary text-lg">${pts}</div>
+        <div class="badge badge-primary text-lg shrink-0">${pts}</div>
       </div>
     `;
   });
@@ -725,7 +726,7 @@ function renderPollTotals(){
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 shrink-0">
             <div class="badge badge-secondary text-lg">${pts}</div>
             <i class="fa-solid ${expanded ? "fa-chevron-up" : "fa-chevron-down"} opacity-70"></i>
           </div>
@@ -758,10 +759,11 @@ window.setDraft = function(character_id, val){
 };
 
 window.togglePollRow = function(character_id){
-  // If you click a DIFFERENT character, it's okay to drop the old one.
+  // If you click a DIFFERENT character, it's okay to drop the old one
   if (pollExpandedId && pollExpandedId !== character_id) {
     delete pollDraft[pollExpandedId];
   }
+
   pollExpandedId = (pollExpandedId === character_id) ? null : character_id;
   renderPollTotals();
 };
@@ -808,7 +810,7 @@ window.submitVote = async function(character_id){
   }
 
   voteBusy = true;
-  setPollRefreshBtnLoading(true); // disables refresh while voting
+  setPollRefreshBtnLoading(true);
   setPollMsg("Submitting your vote…", false);
 
   const btn = document.getElementById(`voteBtn_${character_id}`);
@@ -846,7 +848,6 @@ window.submitVote = async function(character_id){
       throwLoafs();
     }
 
-    // update poll immediately using server snapshot
     if (res.poll && res.poll.ok){
       pollCache = res.poll;
       setOpenClosedBadge(!!pollCache.is_open);
@@ -854,19 +855,15 @@ window.submitVote = async function(character_id){
       $("pollSubtitle").textContent = pollCache.subtitle || "";
       renderTopBadges(pollCache.top || []);
     } else {
-      await refreshPoll({ manual:false }); // quiet
+      await refreshPoll({ manual:false });
     }
 
-    // After vote: jump to Page 1 and collapse so they see the leaders.
+    // After vote: show leaders
     pollPage = 1;
     pollExpandedId = null;
-
-    // clear their draft for that character since it is spent now
     delete pollDraft[character_id];
-
     renderPollTotals();
 
-    // refresh your points box
     await refreshMe();
 
   } finally {
@@ -880,12 +877,10 @@ window.submitVote = async function(character_id){
 };
 
 async function refreshPoll({manual=false} = {}){
-  // FIRST LOAD: boxed loading
   if (!pollHasLoadedOnce) {
     setPollLoading(true, "Loading poll…");
   }
 
-  // MANUAL refresh: overlay + refresh btn spinner
   if (manual) {
     setPollOverlay(true, "Refreshing…");
     setPollRefreshBtnLoading(true);
@@ -900,21 +895,17 @@ async function refreshPoll({manual=false} = {}){
 
     pollCache = j;
 
-    // finish first load -> reveal poll UI
     if (!pollHasLoadedOnce) {
       pollHasLoadedOnce = true;
       setPollLoading(false);
     }
 
-    // update UI with new poll data (quiet)
     setOpenClosedBadge(!!j.is_open);
     $("pollTitle").textContent = j.title || "";
     $("pollSubtitle").textContent = j.subtitle || "";
     renderTopBadges(j.top || []);
 
-    // re-render totals BUT input drafts are preserved via pollDraft[]
     renderPollTotals();
-
     if (!voteBusy) setPollMsg("");
 
   } finally {
@@ -942,7 +933,8 @@ function buildBoards() {
     localStorage.setItem("loaf_board", currentBoard);
     lbPage = 1;
 
-    // Show dark overlay while loading (keeps old list visible behind it)
+    // Show dark overlay while loading
+    setLbOverlay(true, "Loading…");
     await refreshLeaderboard({showOverlay:true, quietIfUnchanged:false, overlayText:"Loading…"});
   };
 }
@@ -985,26 +977,17 @@ $("pollRefreshBtn").onclick = () => {
 /** ====== Init ====== **/
 (async function init() {
   updateAuthButtonUI();
-
-  // Tabs wiring
-  document.querySelectorAll(".tab[data-tab]").forEach(t => {
-    t.addEventListener("click", (e) => {
-      e.preventDefault();
-      setTab(t.dataset.tab, {scrollTop:true, refreshOnShow:true});
-    });
-  });
-  setTab(currentTab, {scrollTop:false, refreshOnShow:false});
-
-  // Build board dropdown (exists in DOM, but only visible on Leaderboards tab)
   buildBoards();
+
+  // Default tab (remember last)
+  const savedTab = localStorage.getItem('loaf_active_tab') || 'overview';
+  setActiveTab(savedTab);
 
   // First loads
   showLbFirstLoadBox(true, "Loading leaderboard…");
   await refreshLeaderboard({quietIfUnchanged:false});
   await refreshMe();
-
-  // Poll loads on init too (safe even if you start on Overview; it will show boxed loading only inside Voting tab when opened)
-  await refreshPoll({manual:false});
+  await refreshPoll({manual:false}); // first load shows boxed loading
 
   // Auto refreshes (QUIET: no overlay)
   setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
