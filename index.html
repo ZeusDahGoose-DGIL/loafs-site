@@ -16,6 +16,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
   <style>
+    /* Fallback: if Tailwind glitches, hidden still hides (prevents overlays blocking clicks) */
+    .hidden { display: none !important; }
+
     /* FX layer for loaf toss */
     #fxLayer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 9999; }
     .crumb {
@@ -229,13 +232,11 @@
       <section id="panel_prizepool" class="hidden space-y-4">
         <div class="card bg-base-200 shadow">
           <div class="card-body text-center space-y-3">
-            <!-- Title broken into 2 lines like you wanted -->
             <div class="text-3xl font-extrabold leading-tight">
               <div>The Goose Is Loose</div>
               <div class="opacity-80">Prize Pool</div>
             </div>
 
-            <!-- BIG pixel money amount (Press Start 2P ONLY here) -->
             <div class="prizePoolAmount text-5xl sm:text-6xl font-extrabold">
               $0
             </div>
@@ -394,9 +395,22 @@ let pollHasLoadedOnce = false;
 /** preserves typed amounts so auto-refresh doesn't wipe input */
 const pollDraft = {}; // character_id -> string value
 
-/** ====== HELPERS ====== **/
+/** ====== SAFE HELPERS (prevents script from dying) ====== **/
 const $ = (id) => document.getElementById(id);
+const on = (id, evt, fn) => { const el = $(id); if (el) el.addEventListener(evt, fn); };
 const getToken = () => sessionStorage.getItem("twitch_token");
+
+function safeClassToggle(id, cls, onOff){
+  const el = $(id);
+  if (!el) return;
+  el.classList.toggle(cls, onOff);
+}
+
+function safeText(id, txt){
+  const el = $(id);
+  if (!el) return;
+  el.textContent = txt;
+}
 
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (m) => ({
@@ -404,13 +418,17 @@ function escapeHtml(str) {
   }[m]));
 }
 
-function setStatus(msg) { $("status").textContent = msg || ""; }
+function setStatus(msg) { safeText("status", msg || ""); }
 
 function updateAuthButtonUI() {
+  const btnText = $("authBtnText");
+  const btn = $("authBtn");
+  if (!btnText || !btn) return;
+
   const hasToken = !!getToken();
-  $("authBtnText").textContent = hasToken ? "Logout" : "Login";
-  $("authBtn").classList.toggle("btn-error", hasToken);
-  $("authBtn").classList.toggle("btn-primary", !hasToken);
+  btnText.textContent = hasToken ? "Logout" : "Login";
+  btn.classList.toggle("btn-error", hasToken);
+  btn.classList.toggle("btn-primary", !hasToken);
 }
 
 /** KEEP your leaderboard icons exactly as you had them **/
@@ -429,7 +447,6 @@ function apiGet(route, params = {}) {
 }
 
 function apiPost(json){
-  // IMPORTANT: use text/plain to avoid CORS preflight blocking on Apps Script
   return fetch(API_BASE, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -441,13 +458,13 @@ function apiPost(json){
 }
 
 function uuid(){
-  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
   return String(Date.now()) + "-" + Math.random().toString(16).slice(2);
 }
 
 /** ====== LOAF FX ====== **/
 function throwLoafs(){
-  const layer = document.getElementById("fxLayer");
+  const layer = $("fxLayer");
   if (!layer) return;
 
   const count = 14;
@@ -484,41 +501,45 @@ const tabs = [
 
 function setActiveTab(tabId){
   tabs.forEach(t => {
-    $(t.tab).classList.toggle("tab-active", t.tab === tabId);
-    $(t.panel).classList.toggle("hidden", t.tab !== tabId);
+    const tabEl = $(t.tab);
+    const panelEl = $(t.panel);
+    if (tabEl) tabEl.classList.toggle("tab-active", t.tab === tabId);
+    if (panelEl) panelEl.classList.toggle("hidden", t.tab !== tabId);
   });
 
   // Board dropdown only visible on Leaderboards tab
-  $("boardSelect").classList.toggle("hidden", tabId !== "tab_leaderboards");
+  const sel = $("boardSelect");
+  if (sel) sel.classList.toggle("hidden", tabId !== "tab_leaderboards");
 
-  // Optional: refresh relevant content when you open a tab
-  if (tabId === "tab_leaderboards") {
-    refreshLeaderboard({quietIfUnchanged:true});
-  }
-  if (tabId === "tab_voting") {
-    refreshPoll({manual:false});
-  }
+  // light refresh when opening a tab
+  if (tabId === "tab_leaderboards") refreshLeaderboard({quietIfUnchanged:true});
+  if (tabId === "tab_voting") refreshPoll({manual:false});
 }
 
-tabs.forEach(t => {
-  $(t.tab).onclick = () => setActiveTab(t.tab);
-});
+function wireTabs(){
+  tabs.forEach(t => {
+    const tabEl = $(t.tab);
+    if (!tabEl) return;
+    tabEl.onclick = () => setActiveTab(t.tab);
+  });
+}
 
 /** ====== LEADERBOARD LOADING UI ====== **/
 function showLbFirstLoadBox(show, titleText="Loading leaderboard…"){
-  $("lbLoadingTitle").textContent = titleText;
-  $("lbLoadingBox").classList.toggle("hidden", !show);
-  $("lb").classList.toggle("hidden", show);
+  safeText("lbLoadingTitle", titleText);
+  safeClassToggle("lbLoadingBox", "hidden", !show);
+  safeClassToggle("lb", "hidden", show);
 }
 
 function setLbOverlay(show, text="Loading…"){
-  $("lbOverlayText").textContent = text;
-  $("lbOverlay").classList.toggle("hidden", !show);
+  safeText("lbOverlayText", text);
+  safeClassToggle("lbOverlay", "hidden", !show);
 }
 
 /** ====== LEADERBOARD ====== **/
 function renderLeaderboard() {
   const el = $("lb");
+  if (!el) return;
   el.innerHTML = "";
 
   const pages = Math.max(1, Math.ceil(lastLeaderboardData.length / PAGE_SIZE));
@@ -544,9 +565,12 @@ function renderLeaderboard() {
     `;
   });
 
-  $("lbPageInfo").textContent = \`Page \${lbPage} of \${pages}\`;
-  $("lbPrev").disabled = lbPage <= 1;
-  $("lbNext").disabled = lbPage >= pages;
+  safeText("lbPageInfo", `Page ${lbPage} of ${pages}`);
+
+  const prev = $("lbPrev");
+  const next = $("lbNext");
+  if (prev) prev.disabled = lbPage <= 1;
+  if (next) next.disabled = lbPage >= pages;
 }
 
 async function refreshLeaderboard({showOverlay=false, quietIfUnchanged=true, overlayText="Loading…"} = {}) {
@@ -555,8 +579,6 @@ async function refreshLeaderboard({showOverlay=false, quietIfUnchanged=true, ove
   if (firstLoad) {
     showLbFirstLoadBox(true, "Loading leaderboard…");
     setStatus("Loading leaderboard...");
-  } else {
-    setStatus("");
   }
 
   if (showOverlay && !firstLoad) setLbOverlay(true, overlayText);
@@ -569,7 +591,7 @@ async function refreshLeaderboard({showOverlay=false, quietIfUnchanged=true, ove
     if (!quietIfUnchanged || firstLoad || h !== lastLeaderboardHash) {
       lastLeaderboardHash = h;
       lastLeaderboardData = data;
-      $("updated").textContent = j.updated ? \`Updated: \${new Date(j.updated).toLocaleTimeString()}\` : "";
+      safeText("updated", j.updated ? `Updated: ${new Date(j.updated).toLocaleTimeString()}` : "");
       renderLeaderboard();
     }
 
@@ -583,17 +605,17 @@ async function refreshLeaderboard({showOverlay=false, quietIfUnchanged=true, ove
 /** ====== ACCOUNT (ME) ====== **/
 async function refreshMe() {
   if (!getToken()) {
-    $("acctLoading").classList.add("hidden");
-    $("meCard").classList.add("hidden");
-    $("loginHint").classList.remove("hidden");
+    safeClassToggle("acctLoading", "hidden", true);
+    safeClassToggle("meCard", "hidden", true);
+    safeClassToggle("loginHint", "hidden", false);
     updateAuthButtonUI();
     return;
   }
 
   updateAuthButtonUI();
-  $("loginHint").classList.add("hidden");
-  $("meCard").classList.add("hidden");
-  $("acctLoading").classList.remove("hidden");
+  safeClassToggle("loginHint", "hidden", true);
+  safeClassToggle("meCard", "hidden", true);
+  safeClassToggle("acctLoading", "hidden", false);
 
   try {
     const r = await fetch("https://api.twitch.tv/helix/users", {
@@ -606,9 +628,9 @@ async function refreshMe() {
     if (!r.ok) {
       sessionStorage.removeItem("twitch_token");
       updateAuthButtonUI();
-      $("acctLoading").classList.add("hidden");
-      $("meCard").classList.add("hidden");
-      $("loginHint").classList.remove("hidden");
+      safeClassToggle("acctLoading", "hidden", true);
+      safeClassToggle("meCard", "hidden", true);
+      safeClassToggle("loginHint", "hidden", false);
       setStatus("Session expired. Please login again.");
       return;
     }
@@ -617,7 +639,7 @@ async function refreshMe() {
     const me = tj.data?.[0];
     if (!me) throw new Error("Could not read Twitch user.");
 
-    $("meName").textContent = me.display_name;
+    safeText("meName", me.display_name);
 
     const g = await apiGet("me", {
       twitch_user_id: me.id,
@@ -626,28 +648,31 @@ async function refreshMe() {
       board: "general"
     });
 
-    $("meTotalPoints").textContent = (g.points ?? 0);
-    $("meRank").textContent = g.rank ? ("#" + g.rank) : "—";
+    safeText("meTotalPoints", (g.points ?? 0));
+    safeText("meRank", g.rank ? ("#" + g.rank) : "—");
 
-    $("acctLoading").classList.add("hidden");
-    $("meCard").classList.remove("hidden");
+    safeClassToggle("acctLoading", "hidden", true);
+    safeClassToggle("meCard", "hidden", false);
   } catch (err) {
-    $("acctLoading").classList.add("hidden");
-    $("meCard").classList.add("hidden");
-    $("loginHint").classList.remove("hidden");
+    safeClassToggle("acctLoading", "hidden", true);
+    safeClassToggle("meCard", "hidden", true);
+    safeClassToggle("loginHint", "hidden", false);
     setStatus("Could not load account info. Try logging out and back in.");
   }
 }
 
-/** ===== Poll UI ===== **/
+/** ===== Poll UI (same logic as before, kept) ===== **/
 function setPollMsg(msg, isErr=false){
-  $("pollMsg").textContent = msg || "";
-  $("pollMsg").classList.toggle("text-error", !!isErr);
-  $("pollMsg").classList.toggle("font-bold", !!msg);
+  const el = $("pollMsg");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.classList.toggle("text-error", !!isErr);
+  el.classList.toggle("font-bold", !!msg);
 }
 
 function setOpenClosedBadge(isOpen){
   const b = $("pollStateBadge");
+  if (!b) return;
   if (isOpen){
     b.textContent = "OPEN";
     b.className = "badge badge-outline px-3 py-3 font-bold border-success text-success";
@@ -659,6 +684,7 @@ function setOpenClosedBadge(isOpen){
 
 function renderTopBadges(names){
   const wrap = $("pollTop");
+  if (!wrap) return;
   wrap.innerHTML = "";
   if (!names || !names.length){
     wrap.innerHTML = `<span class="opacity-70">—</span>`;
@@ -675,11 +701,7 @@ function renderTopBadges(names){
 function getSortedOptions(options){
   const arr = (options || []).map((o, i) => ({...o, _idx:i}));
   const maxPts = Math.max(0, ...arr.map(x => Number(x.points||0)));
-
-  if (maxPts === 0){
-    return arr.sort((a,b)=> a._idx - b._idx);
-  }
-
+  if (maxPts === 0) return arr.sort((a,b)=> a._idx - b._idx);
   return arr.sort((a,b)=>{
     const dp = Number(b.points||0) - Number(a.points||0);
     if (dp !== 0) return dp;
@@ -689,14 +711,16 @@ function getSortedOptions(options){
 
 function renderPollTotals(){
   const wrap = $("pollTotals");
+  if (!wrap) return;
   wrap.innerHTML = "";
 
   const options = getSortedOptions(pollCache?.options || []);
   if (!options.length){
     wrap.innerHTML = `<div class="opacity-70 text-sm">No options found.</div>`;
-    $("pollPageInfo").textContent = "Page 1 of 1";
-    $("pollPrev").disabled = true;
-    $("pollNext").disabled = true;
+    safeText("pollPageInfo", "Page 1 of 1");
+    const p = $("pollPrev"), n = $("pollNext");
+    if (p) p.disabled = true;
+    if (n) n.disabled = true;
     return;
   }
 
@@ -706,9 +730,10 @@ function renderPollTotals(){
   const start = (pollPage - 1) * POLL_PAGE_SIZE;
   const slice = options.slice(start, start + POLL_PAGE_SIZE);
 
-  $("pollPageInfo").textContent = `Page ${pollPage} of ${pages}`;
-  $("pollPrev").disabled = pollPage <= 1;
-  $("pollNext").disabled = pollPage >= pages;
+  safeText("pollPageInfo", `Page ${pollPage} of ${pages}`);
+  const prev = $("pollPrev"), next = $("pollNext");
+  if (prev) prev.disabled = pollPage <= 1;
+  if (next) next.disabled = pollPage >= pages;
 
   const maxPts = Math.max(1, ...options.map(o => Number(o.points||0)));
 
@@ -716,7 +741,6 @@ function renderPollTotals(){
     const pts = Number(o.points || 0);
     const pct = Math.round((pts / maxPts) * 100);
     const expanded = (pollExpandedId === o.character_id);
-
     const draftVal = pollDraft[o.character_id] ?? "";
 
     wrap.innerHTML += `
@@ -768,33 +792,32 @@ window.setDraft = function(character_id, val){
 };
 
 window.togglePollRow = function(character_id){
-  if (pollExpandedId && pollExpandedId !== character_id) {
-    delete pollDraft[pollExpandedId];
-  }
+  if (pollExpandedId && pollExpandedId !== character_id) delete pollDraft[pollExpandedId];
   pollExpandedId = (pollExpandedId === character_id) ? null : character_id;
   renderPollTotals();
 };
 
 function setPollLoading(firstLoad, text="Loading poll…"){
   if (firstLoad) {
-    $("pollLoadingTitle").textContent = text;
-    $("pollLoadingBox").classList.remove("hidden");
-    $("pollContent").classList.add("hidden");
+    safeText("pollLoadingTitle", text);
+    safeClassToggle("pollLoadingBox", "hidden", false);
+    safeClassToggle("pollContent", "hidden", true);
   } else {
-    $("pollLoadingBox").classList.add("hidden");
-    $("pollContent").classList.remove("hidden");
+    safeClassToggle("pollLoadingBox", "hidden", true);
+    safeClassToggle("pollContent", "hidden", false);
   }
 }
 
 function setPollOverlay(show, text="Refreshing…"){
-  $("pollOverlayText").textContent = text;
-  $("pollOverlay").classList.toggle("hidden", !show);
+  safeText("pollOverlayText", text);
+  safeClassToggle("pollOverlay", "hidden", !show);
 }
 
 function setPollRefreshBtnLoading(isLoading){
-  $("pollRefreshSpin").classList.toggle("hidden", !isLoading);
-  $("pollRefreshText").textContent = isLoading ? "Refreshing…" : "Refresh";
-  $("pollRefreshBtn").disabled = isLoading || voteBusy;
+  safeClassToggle("pollRefreshSpin", "hidden", !isLoading);
+  safeText("pollRefreshText", isLoading ? "Refreshing…" : "Refresh");
+  const btn = $("pollRefreshBtn");
+  if (btn) btn.disabled = isLoading || voteBusy;
 }
 
 window.submitVote = async function(character_id){
@@ -858,8 +881,8 @@ window.submitVote = async function(character_id){
     if (res.poll && res.poll.ok){
       pollCache = res.poll;
       setOpenClosedBadge(!!pollCache.is_open);
-      $("pollTitle").textContent = pollCache.title || "";
-      $("pollSubtitle").textContent = pollCache.subtitle || "";
+      safeText("pollTitle", pollCache.title || "");
+      safeText("pollSubtitle", pollCache.subtitle || "");
       renderTopBadges(pollCache.top || []);
     } else {
       await refreshPoll({manual:false});
@@ -883,9 +906,7 @@ window.submitVote = async function(character_id){
 };
 
 async function refreshPoll({manual=false} = {}){
-  if (!pollHasLoadedOnce) {
-    setPollLoading(true, "Loading poll…");
-  }
+  if (!pollHasLoadedOnce) setPollLoading(true, "Loading poll…");
 
   if (manual) {
     setPollOverlay(true, "Refreshing…");
@@ -907,8 +928,8 @@ async function refreshPoll({manual=false} = {}){
     }
 
     setOpenClosedBadge(!!j.is_open);
-    $("pollTitle").textContent = j.title || "";
-    $("pollSubtitle").textContent = j.subtitle || "";
+    safeText("pollTitle", j.title || "");
+    safeText("pollSubtitle", j.subtitle || "");
     renderTopBadges(j.top || []);
     renderPollTotals();
 
@@ -924,6 +945,7 @@ async function refreshPoll({manual=false} = {}){
 /** ====== BOARDS DROPDOWN ====== **/
 function buildBoards() {
   const sel = $("boardSelect");
+  if (!sel) return;
   sel.innerHTML = "";
   BOARDS.forEach(b => {
     const o = document.createElement("option");
@@ -942,58 +964,72 @@ function buildBoards() {
 }
 
 /** ====== AUTH BUTTON ====== **/
-$("authBtn").onclick = () => {
-  if (getToken()) {
-    sessionStorage.removeItem("twitch_token");
-    updateAuthButtonUI();
-    setStatus("Logged out.");
-    refreshMe();
-    return;
-  }
+function wireAuth(){
+  const btn = $("authBtn");
+  if (!btn) return;
 
-  const state = crypto.getRandomValues(new Uint32Array(4)).join("-");
-  sessionStorage.setItem("oauth_state", state);
+  btn.onclick = () => {
+    if (getToken()) {
+      sessionStorage.removeItem("twitch_token");
+      updateAuthButtonUI();
+      setStatus("Logged out.");
+      refreshMe();
+      return;
+    }
 
-  const redirect = location.origin + location.pathname.replace(/\/[^\/]*$/, "/callback.html");
-  const u = new URL("https://id.twitch.tv/oauth2/authorize");
-  u.searchParams.set("client_id", TWITCH_CLIENT_ID);
-  u.searchParams.set("redirect_uri", redirect);
-  u.searchParams.set("response_type", "token");
-  u.searchParams.set("state", state);
-  location.href = u.toString();
-};
+    // safer crypto usage
+    const state = (window.crypto && crypto.getRandomValues)
+      ? crypto.getRandomValues(new Uint32Array(4)).join("-")
+      : String(Date.now());
 
-/** ====== Pagination ====== **/
-$("lbPrev").onclick = () => { lbPage--; renderLeaderboard(); };
-$("lbNext").onclick = () => { lbPage++; renderLeaderboard(); };
+    sessionStorage.setItem("oauth_state", state);
 
-$("pollPrev").onclick = () => { pollPage--; renderPollTotals(); };
-$("pollNext").onclick = () => { pollPage++; renderPollTotals(); };
+    const redirect = location.origin + location.pathname.replace(/\/[^\/]*$/, "/callback.html");
+    const u = new URL("https://id.twitch.tv/oauth2/authorize");
+    u.searchParams.set("client_id", TWITCH_CLIENT_ID);
+    u.searchParams.set("redirect_uri", redirect);
+    u.searchParams.set("response_type", "token");
+    u.searchParams.set("state", state);
+    location.href = u.toString();
+  };
+}
 
-$("pollRefreshBtn").onclick = () => {
-  if (voteBusy) return;
-  refreshPoll({ manual:true });
-};
+/** ====== Pagination + refresh buttons ====== **/
+function wireButtons(){
+  on("lbPrev", "click", () => { lbPage--; renderLeaderboard(); });
+  on("lbNext", "click", () => { lbPage++; renderLeaderboard(); });
 
-/** ====== Init ====== **/
-(async function init() {
+  on("pollPrev", "click", () => { pollPage--; renderPollTotals(); });
+  on("pollNext", "click", () => { pollPage++; renderPollTotals(); });
+
+  on("pollRefreshBtn", "click", () => {
+    if (voteBusy) return;
+    refreshPoll({ manual:true });
+  });
+}
+
+/** ====== Init (wrapped so mobile won't race/half-load) ====== **/
+document.addEventListener("DOMContentLoaded", async () => {
   updateAuthButtonUI();
   buildBoards();
+  wireTabs();
+  wireAuth();
+  wireButtons();
 
   // default tab
   setActiveTab("tab_overview");
 
-  // First loads (load data even if not visible yet)
+  // first loads
   showLbFirstLoadBox(true, "Loading leaderboard…");
   await refreshLeaderboard({quietIfUnchanged:false});
   await refreshMe();
   await refreshPoll({manual:false});
 
-  // Auto refreshes (QUIET)
+  // auto refresh (quiet)
   setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
   setInterval(() => refreshMe(), 30000);
   setInterval(() => refreshPoll({manual:false}), 30000);
-})();
+});
 </script>
 </body>
 </html>
