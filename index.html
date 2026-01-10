@@ -39,6 +39,9 @@
       justify-content: center;
       z-index: 50;
     }
+
+    /* Small helper: keep tab row nicely separated */
+    .tabsWrap { margin-top: .25rem; }
   </style>
 </head>
 
@@ -47,8 +50,8 @@
 
   <div class="max-w-7xl mx-auto p-6 space-y-4">
 
-    <!-- LOGO + TITLE -->
-    <div class="flex flex-col items-center text-center mb-4">
+    <!-- LOGO + TITLE (STAYS ON EVERY TAB) -->
+    <div class="flex flex-col items-center text-center mb-2">
       <img src="assets/logo.png" class="h-56 w-auto object-contain mb-3" alt="Logo" />
       <h1 class="text-4xl font-extrabold flex items-center gap-2">🍞 Loaf Points</h1>
       <div class="opacity-70 mt-1">
@@ -57,222 +60,291 @@
       <div id="status" class="text-sm opacity-70 mt-1"></div>
     </div>
 
-    <!-- CONTROLS -->
-    <div class="flex justify-end mb-2">
-      <div class="flex items-center gap-2">
+    <!-- TOP RIGHT LOGIN (STAYS ON EVERY TAB) -->
+    <div class="flex justify-end">
+      <button id="authBtn" class="btn btn-primary">
+        <i class="fa-brands fa-twitch"></i>
+        <span id="authBtnText">Login</span>
+      </button>
+    </div>
+
+    <!-- TABS (DaisyUI Option A) -->
+    <div class="tabs tabs-boxed tabsWrap">
+      <a class="tab" id="tab_overview"      data-tab="overview">Overview</a>
+      <a class="tab" id="tab_leaderboards"  data-tab="leaderboards">Leaderboards</a>
+      <a class="tab" id="tab_prizepool"     data-tab="prizepool">DGIL Prize Pool</a>
+      <a class="tab" id="tab_voting"        data-tab="voting">Voting / Redeems</a>
+      <a class="tab" id="tab_howtoloaf"     data-tab="howtoloaf">How to Loaf</a>
+    </div>
+
+    <!-- ========================= -->
+    <!-- TAB PANELS (UNDER TABS)   -->
+    <!-- ========================= -->
+
+    <!-- OVERVIEW -->
+    <section id="panel_overview" class="mt-2">
+      <div class="card bg-base-200 shadow">
+        <div class="card-body">
+          <div class="text-2xl font-extrabold">DGIL (Next)</div>
+          <div class="opacity-70">the goose is loose</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LEADERBOARDS -->
+    <section id="panel_leaderboards" class="mt-2 hidden">
+      <!-- Board dropdown row (ONLY on Leaderboards tab) -->
+      <div class="flex justify-end mb-3">
         <select id="boardSelect" class="select select-bordered"></select>
-
-        <button id="authBtn" class="btn btn-primary">
-          <i class="fa-brands fa-twitch"></i>
-          <span id="authBtnText">Login</span>
-        </button>
       </div>
-    </div>
 
-    <!-- MAIN GRID -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+      <!-- MAIN GRID for leaderboards -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
 
-      <!-- LEFT PANEL -->
-      <div class="lg:col-span-3 lg:sticky lg:top-4 space-y-4">
+        <!-- LEFT PANEL -->
+        <div class="lg:col-span-3 lg:sticky lg:top-4 space-y-4">
 
-        <!-- ACCOUNT SLOT (fixed height so columns align) -->
-        <div class="min-h-[260px]">
+          <!-- ACCOUNT SLOT (fixed height so columns align) -->
+          <div class="min-h-[260px]">
 
-          <!-- Loading -->
-          <div id="acctLoading" class="card bg-base-200 shadow hidden">
+            <!-- Loading -->
+            <div id="acctLoading" class="card bg-base-200 shadow hidden">
+              <div class="card-body">
+                <div class="text-lg font-bold">Loading Account Info…</div>
+                <div class="text-sm opacity-70">
+                  Checking your Twitch login and pulling your Loaf Points.
+                </div>
+                <div class="mt-3 flex items-center gap-3 opacity-70">
+                  <span class="loading loading-spinner loading-md"></span>
+                  <span class="text-sm">Please wait…</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Logged in -->
+            <div id="meCard" class="card bg-base-200 shadow hidden">
+              <div class="card-body">
+                <div class="text-sm opacity-70">Logged in as</div>
+                <div id="meName" class="text-xl font-bold"></div>
+
+                <div class="mt-3 grid grid-cols-1 gap-3">
+                  <div class="bg-base-300 rounded-xl p-3">
+                    <div class="text-sm opacity-70">Loaf Points (current)</div>
+                    <div id="meTotalPoints" class="text-3xl font-extrabold">0</div>
+                  </div>
+
+                  <div class="bg-base-300 rounded-xl p-3">
+                    <div class="text-sm opacity-70">Board rank</div>
+                    <div id="meRank" class="text-3xl font-extrabold">—</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- HOW IT WORKS -->
+          <div id="loginHint" class="card bg-base-200 shadow">
             <div class="card-body">
-              <div class="text-lg font-bold">Loading Account Info…</div>
+              <div class="text-lg font-bold">How it works</div>
               <div class="text-sm opacity-70">
-                Checking your Twitch login and pulling your Loaf Points.
-              </div>
-              <div class="mt-3 flex items-center gap-3 opacity-70">
-                <span class="loading loading-spinner loading-md"></span>
-                <span class="text-sm">Please wait…</span>
+                Login with Twitch to view your Loaf Points, see your rank on the leaderboard, and rankings in each game.
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Logged in -->
-          <div id="meCard" class="card bg-base-200 shadow hidden">
+        <!-- CENTER -->
+        <div class="lg:col-span-9 space-y-4">
+
+          <!-- LEADERBOARD -->
+          <div class="card bg-base-200 shadow">
+            <div class="card-body relative">
+              <div class="flex items-center justify-between">
+                <div class="text-xl font-bold">Leaderboard</div>
+                <div id="updated" class="text-sm opacity-70"></div>
+              </div>
+
+              <!-- First-load loading box (replaces list ONLY on first load) -->
+              <div id="lbLoadingBox" class="mt-3 bg-base-300 rounded-xl px-4 py-4">
+                <div class="flex items-center gap-3">
+                  <span class="loading loading-spinner loading-md"></span>
+                  <div>
+                    <div id="lbLoadingTitle" class="text-lg font-bold">Loading leaderboard…</div>
+                    <div class="text-sm opacity-70">Please wait…</div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="lb" class="mt-3 space-y-2 hidden"></div>
+
+              <div class="mt-4 flex items-center justify-between">
+                <button id="lbPrev" class="btn btn-sm btn-outline" disabled>
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <div id="lbPageInfo" class="text-sm opacity-70">Page 1 of 1</div>
+                <button id="lbNext" class="btn btn-sm btn-outline" disabled>
+                  <i class="fa-solid fa-chevron-right"></i>
+                </button>
+              </div>
+
+              <!-- Overlay (board-switch loading) -->
+              <div id="lbOverlay" class="overlayBox hidden">
+                <div class="flex items-center gap-3 bg-base-300 rounded-xl px-4 py-3 shadow">
+                  <span class="loading loading-spinner loading-md"></span>
+                  <div class="text-lg font-bold" id="lbOverlayText">Loading…</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- TIP (under dropdown area, per your request) -->
+          <div class="card bg-base-200 shadow">
             <div class="card-body">
-              <div class="text-sm opacity-70">Logged in as</div>
-              <div id="meName" class="text-xl font-bold"></div>
-
-              <div class="mt-3 grid grid-cols-1 gap-3">
-                <div class="bg-base-300 rounded-xl p-3">
-                  <div class="text-sm opacity-70">Loaf Points (current)</div>
-                  <div id="meTotalPoints" class="text-3xl font-extrabold">0</div>
-                </div>
-
-                <div class="bg-base-300 rounded-xl p-3">
-                  <div class="text-sm opacity-70">Board rank</div>
-                  <div id="meRank" class="text-3xl font-extrabold">—</div>
-                </div>
+              <div class="text-lg font-bold">Tip</div>
+              <div class="text-sm opacity-70">
+                Use the dropdown up top to switch between the main Leaderboard & Tournament Ranks for Each Game.
               </div>
             </div>
           </div>
 
-        </div>
-
-        <!-- HOW IT WORKS -->
-        <div id="loginHint" class="card bg-base-200 shadow">
-          <div class="card-body">
-            <div class="text-lg font-bold">How it works</div>
-            <div class="text-sm opacity-70">
-              Login with Twitch to view your Loaf Points, see your rank on the leaderboard, and rankings in each game.
-            </div>
-          </div>
         </div>
       </div>
+    </section>
 
-      <!-- CENTER -->
-      <div class="lg:col-span-6 space-y-4">
+    <!-- PRIZE POOL -->
+    <section id="panel_prizepool" class="mt-2 hidden">
+      <div class="card bg-base-200 shadow">
+        <div class="card-body">
+          <div class="text-2xl font-extrabold">The Goose Is Loose Prize Pool</div>
+          <div class="mt-2 text-4xl font-extrabold flex items-center gap-2">
+            <span>💰</span><span id="prizePoolAmt">$0</span>
+          </div>
+          <div class="opacity-70 text-sm mt-1">(You can change this later.)</div>
+        </div>
+      </div>
+    </section>
 
-        <!-- LEADERBOARD -->
-        <div class="card bg-base-200 shadow">
-          <div class="card-body relative">
-            <div class="flex items-center justify-between">
-              <div class="text-xl font-bold">Leaderboard</div>
-              <div id="updated" class="text-sm opacity-70"></div>
-            </div>
+    <!-- VOTING / REDEEMS -->
+    <section id="panel_voting" class="mt-2 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
 
-            <!-- First-load loading box (replaces list ONLY on first load) -->
-            <div id="lbLoadingBox" class="mt-3 bg-base-300 rounded-xl px-4 py-4">
-              <div class="flex items-center gap-3">
-                <span class="loading loading-spinner loading-md"></span>
-                <div>
-                  <div id="lbLoadingTitle" class="text-lg font-bold">Loading leaderboard…</div>
-                  <div class="text-sm opacity-70">Please wait…</div>
+        <!-- VOTING (POLL) -->
+        <div class="lg:col-span-8">
+          <div class="card bg-base-200 shadow">
+            <div class="card-body relative">
+
+              <!-- BIG first-load poll loading (boxed) -->
+              <div id="pollLoadingBox" class="bg-base-300 rounded-xl px-4 py-4">
+                <div class="flex items-center gap-3">
+                  <span class="loading loading-spinner loading-md"></span>
+                  <div>
+                    <div id="pollLoadingTitle" class="text-lg font-bold">Loading poll…</div>
+                    <div class="text-sm opacity-70">Please wait…</div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div id="lb" class="mt-3 space-y-2 hidden"></div>
+              <!-- Poll content (hidden until first load completes) -->
+              <div id="pollContent" class="hidden">
 
-            <div class="mt-4 flex items-center justify-between">
-              <button id="lbPrev" class="btn btn-sm btn-outline" disabled>
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
-              <div id="lbPageInfo" class="text-sm opacity-70">Page 1 of 1</div>
-              <button id="lbNext" class="btn btn-sm btn-outline" disabled>
-                <i class="fa-solid fa-chevron-right"></i>
-              </button>
-            </div>
+                <!-- OPEN/CLOSED badge ABOVE title -->
+                <div class="flex items-start justify-between gap-3 flex-wrap">
+                  <div class="flex items-center gap-2">
+                    <div id="pollStateBadge" class="badge badge-outline px-3 py-3 font-bold">CLOSED</div>
+                  </div>
 
-            <!-- Overlay (board-switch loading) -->
-            <div id="lbOverlay" class="overlayBox hidden">
-              <div class="flex items-center gap-3 bg-base-300 rounded-xl px-4 py-3 shadow">
-                <span class="loading loading-spinner loading-md"></span>
-                <div class="text-lg font-bold" id="lbOverlayText">Loading…</div>
+                  <div class="flex items-center gap-2">
+                    <button id="pollRefreshBtn" class="btn btn-outline btn-sm">
+                      <span id="pollRefreshSpin" class="loading loading-spinner loading-xs hidden"></span>
+                      <span id="pollRefreshText">Refresh</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="mt-2">
+                  <div id="pollTitle" class="text-2xl font-extrabold"></div>
+                  <div id="pollSubtitle" class="text-sm opacity-70 mt-1"></div>
+                </div>
+
+                <div id="pollMsg" class="text-sm mt-2 opacity-80"></div>
+
+                <div class="mt-4">
+                  <div class="text-sm opacity-70 mb-2">Current Top Bans</div>
+                  <div id="pollTop" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div class="mt-4">
+                  <div class="text-sm opacity-70 mb-2">Totals</div>
+                  <div id="pollTotals" class="space-y-2"></div>
+
+                  <!-- Poll paging (5 at a time) -->
+                  <div class="mt-4 flex items-center justify-between">
+                    <button id="pollPrev" class="btn btn-sm btn-outline" disabled>
+                      <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div id="pollPageInfo" class="text-sm opacity-70">Page 1 of 1</div>
+                    <button id="pollNext" class="btn btn-sm btn-outline" disabled>
+                      <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                  </div>
+                </div>
+
+              </div><!-- /pollContent -->
+
+              <!-- OVERLAY (MANUAL refresh only) -->
+              <div id="pollOverlay" class="overlayBox hidden">
+                <div class="flex items-center gap-3 bg-base-300 rounded-xl px-4 py-3 shadow">
+                  <span class="loading loading-spinner loading-md"></span>
+                  <div class="text-lg font-bold" id="pollOverlayText">Refreshing…</div>
+                </div>
               </div>
-            </div>
 
+            </div>
           </div>
         </div>
 
-        <!-- POLL -->
-        <div class="card bg-base-200 shadow">
-          <div class="card-body relative">
-
-            <!-- BIG first-load poll loading (boxed) -->
-            <div id="pollLoadingBox" class="bg-base-300 rounded-xl px-4 py-4">
-              <div class="flex items-center gap-3">
-                <span class="loading loading-spinner loading-md"></span>
-                <div>
-                  <div id="pollLoadingTitle" class="text-lg font-bold">Loading poll…</div>
-                  <div class="text-sm opacity-70">Please wait…</div>
-                </div>
+        <!-- REDEEMS -->
+        <div class="lg:col-span-4 lg:sticky lg:top-4 space-y-4">
+          <div class="card bg-base-200 shadow">
+            <div class="card-body">
+              <div class="text-xl font-bold">Redeems</div>
+              <div class="opacity-70 text-sm">
+                Spending is disabled for now. This will be enabled later.
+              </div>
+              <div class="mt-3 grid gap-2">
+                <button class="btn btn-secondary btn-disabled">🎲 ??? (1000)</button>
+                <button class="btn btn-secondary btn-disabled">🔁 ??? (200)</button>
+                <button class="btn btn-secondary btn-disabled">📜 ??? (100)</button>
+                <button class="btn btn-secondary btn-disabled">📣 ??? (50)</button>
               </div>
             </div>
+          </div>
 
-            <!-- Poll content (hidden until first load completes) -->
-            <div id="pollContent" class="hidden">
-
-              <!-- OPEN/CLOSED badge ABOVE title -->
-              <div class="flex items-start justify-between gap-3 flex-wrap">
-                <div class="flex items-center gap-2">
-                  <div id="pollStateBadge" class="badge badge-outline px-3 py-3 font-bold">CLOSED</div>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <button id="pollRefreshBtn" class="btn btn-outline btn-sm">
-                    <span id="pollRefreshSpin" class="loading loading-spinner loading-xs hidden"></span>
-                    <span id="pollRefreshText">Refresh</span>
-                  </button>
-                </div>
-              </div>
-
-              <div class="mt-2">
-                <div id="pollTitle" class="text-2xl font-extrabold"></div>
-                <div id="pollSubtitle" class="text-sm opacity-70 mt-1"></div>
-              </div>
-
-              <div id="pollMsg" class="text-sm mt-2 opacity-80"></div>
-
-              <div class="mt-4">
-                <div class="text-sm opacity-70 mb-2">Current Top Bans</div>
-                <div id="pollTop" class="flex flex-wrap gap-2"></div>
-              </div>
-
-              <div class="mt-4">
-                <div class="text-sm opacity-70 mb-2">Totals</div>
-                <div id="pollTotals" class="space-y-2"></div>
-
-                <!-- Poll paging (5 at a time) -->
-                <div class="mt-4 flex items-center justify-between">
-                  <button id="pollPrev" class="btn btn-sm btn-outline" disabled>
-                    <i class="fa-solid fa-chevron-left"></i>
-                  </button>
-                  <div id="pollPageInfo" class="text-sm opacity-70">Page 1 of 1</div>
-                  <button id="pollNext" class="btn btn-sm btn-outline" disabled>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </button>
-                </div>
-              </div>
-
-            </div><!-- /pollContent -->
-
-            <!-- OVERLAY (MANUAL refresh only) -->
-            <div id="pollOverlay" class="overlayBox hidden">
-              <div class="flex items-center gap-3 bg-base-300 rounded-xl px-4 py-3 shadow">
-                <span class="loading loading-spinner loading-md"></span>
-                <div class="text-lg font-bold" id="pollOverlayText">Refreshing…</div>
+          <div class="card bg-base-200 shadow">
+            <div class="card-body">
+              <div class="text-lg font-bold">Tip</div>
+              <div class="text-sm opacity-70">
+                Vote in the poll when it's open, or redeem future Loaf actions here.
               </div>
             </div>
-
           </div>
         </div>
 
       </div>
+    </section>
 
-      <!-- RIGHT PANEL -->
-      <div class="lg:col-span-3 lg:sticky lg:top-4 space-y-4">
-        <div class="card bg-base-200 shadow">
-          <div class="card-body">
-            <div class="text-xl font-bold">Redeems</div>
-            <div class="opacity-70 text-sm">
-              Spending is disabled for now. This will be enabled later.
-            </div>
-            <div class="mt-3 grid gap-2">
-              <button class="btn btn-secondary btn-disabled">🎲 ??? (1000)</button>
-              <button class="btn btn-secondary btn-disabled">🔁 ??? (200)</button>
-              <button class="btn btn-secondary btn-disabled">📜 ??? (100)</button>
-              <button class="btn btn-secondary btn-disabled">📣 ??? (50)</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card bg-base-200 shadow">
-          <div class="card-body">
-            <div class="text-lg font-bold">Tip</div>
-            <div class="text-sm opacity-70">
-              Use the dropdown up top to switch between the main Leaderboard & Tournament Ranks for Each Game.
-            </div>
-          </div>
+    <!-- HOW TO LOAF -->
+    <section id="panel_howtoloaf" class="mt-2 hidden">
+      <div class="card bg-base-200 shadow">
+        <div class="card-body">
+          <div class="text-2xl font-extrabold">How to Loaf</div>
+          <div class="mt-2 opacity-70">test 1, 2, 3</div>
         </div>
       </div>
+    </section>
 
-    </div>
   </div>
 
 <script>
@@ -307,7 +379,6 @@ let pollCache = null;
 let pollExpandedId = null;
 let voteBusy = false;
 let pollHasLoadedOnce = false;
-let pollManualRefreshing = false;
 
 /** preserves typed amounts so auto-refresh doesn't wipe input */
 const pollDraft = {}; // character_id -> string value
@@ -388,6 +459,38 @@ function throwLoafs(){
 
     layer.appendChild(el);
     setTimeout(() => el.remove(), 750);
+  }
+}
+
+/** ====== TABS ====== **/
+const TAB_IDS = ["overview","leaderboards","prizepool","voting","howtoloaf"];
+let currentTab = localStorage.getItem("loaf_tab") || "overview";
+if (!TAB_IDS.includes(currentTab)) currentTab = "overview";
+
+function setTab(tabId, {scrollTop=true, refreshOnShow=true} = {}) {
+  currentTab = tabId;
+  localStorage.setItem("loaf_tab", tabId);
+
+  // active tab styling
+  TAB_IDS.forEach(id => {
+    const t = document.querySelector(`.tab[data-tab="${id}"]`);
+    const p = document.getElementById(`panel_${id}`);
+    if (t) t.classList.toggle("tab-active", id === tabId);
+    if (p) p.classList.toggle("hidden", id !== tabId);
+  });
+
+  if (scrollTop) window.scrollTo({ top: 0, behavior: "smooth" });
+
+  // optional refresh when entering certain tabs (safe, no overlays)
+  if (refreshOnShow) {
+    if (tabId === "leaderboards") {
+      refreshLeaderboard({quietIfUnchanged:true}); // quiet refresh
+      refreshMe(); // update account card if logged in
+    }
+    if (tabId === "voting") {
+      // ensure poll loads when visiting voting
+      if (!pollHasLoadedOnce) refreshPoll({manual:false});
+    }
   }
 }
 
@@ -655,12 +758,10 @@ window.setDraft = function(character_id, val){
 };
 
 window.togglePollRow = function(character_id){
-  // Your request: don't wipe input due to auto refresh.
-  // But if you click a DIFFERENT character, it's okay to drop the old one.
+  // If you click a DIFFERENT character, it's okay to drop the old one.
   if (pollExpandedId && pollExpandedId !== character_id) {
     delete pollDraft[pollExpandedId];
   }
-
   pollExpandedId = (pollExpandedId === character_id) ? null : character_id;
   renderPollTotals();
 };
@@ -706,7 +807,6 @@ window.submitVote = async function(character_id){
     return;
   }
 
-  // disable submit + show spinner
   voteBusy = true;
   setPollRefreshBtnLoading(true); // disables refresh while voting
   setPollMsg("Submitting your vote…", false);
@@ -770,7 +870,6 @@ window.submitVote = async function(character_id){
     await refreshMe();
 
   } finally {
-    // re-enable submit UI
     if (btn) btn.disabled = false;
     if (spin) spin.classList.add("hidden");
     if (text) text.textContent = "Submit";
@@ -788,7 +887,6 @@ async function refreshPoll({manual=false} = {}){
 
   // MANUAL refresh: overlay + refresh btn spinner
   if (manual) {
-    pollManualRefreshing = true;
     setPollOverlay(true, "Refreshing…");
     setPollRefreshBtnLoading(true);
   }
@@ -814,14 +912,13 @@ async function refreshPoll({manual=false} = {}){
     $("pollSubtitle").textContent = j.subtitle || "";
     renderTopBadges(j.top || []);
 
-    // IMPORTANT: re-render totals BUT input drafts are preserved via pollDraft[]
+    // re-render totals BUT input drafts are preserved via pollDraft[]
     renderPollTotals();
 
     if (!voteBusy) setPollMsg("");
 
   } finally {
     if (manual) {
-      pollManualRefreshing = false;
       setPollOverlay(false);
       setPollRefreshBtnLoading(false);
     }
@@ -846,7 +943,6 @@ function buildBoards() {
     lbPage = 1;
 
     // Show dark overlay while loading (keeps old list visible behind it)
-    setLbOverlay(true, "Loading…");
     await refreshLeaderboard({showOverlay:true, quietIfUnchanged:false, overlayText:"Loading…"});
   };
 }
@@ -889,13 +985,26 @@ $("pollRefreshBtn").onclick = () => {
 /** ====== Init ====== **/
 (async function init() {
   updateAuthButtonUI();
+
+  // Tabs wiring
+  document.querySelectorAll(".tab[data-tab]").forEach(t => {
+    t.addEventListener("click", (e) => {
+      e.preventDefault();
+      setTab(t.dataset.tab, {scrollTop:true, refreshOnShow:true});
+    });
+  });
+  setTab(currentTab, {scrollTop:false, refreshOnShow:false});
+
+  // Build board dropdown (exists in DOM, but only visible on Leaderboards tab)
   buildBoards();
 
   // First loads
   showLbFirstLoadBox(true, "Loading leaderboard…");
   await refreshLeaderboard({quietIfUnchanged:false});
   await refreshMe();
-  await refreshPoll({manual:false}); // first load shows boxed loading
+
+  // Poll loads on init too (safe even if you start on Overview; it will show boxed loading only inside Voting tab when opened)
+  await refreshPoll({manual:false});
 
   // Auto refreshes (QUIET: no overlay)
   setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
