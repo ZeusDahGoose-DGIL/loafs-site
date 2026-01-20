@@ -85,43 +85,38 @@
     0 0 0 1px rgba(255,255,255,.08),
     0 0 18px rgba(205,127,50,.18);
 }
-/* ===== #1 Crown glow pulse ===== */
-.crownPulse {
-  position: relative;
+/* ===== #1 Crown glow pulse (emoji-safe) ===== */
+.crownPulse{
+  display:inline-block;
+  line-height:1;
+  transform: translateZ(0);
+  animation: crownPop 3.5s ease-in-out infinite;
 }
 
-.crownPulse::after {
-  content: "";
-  position: absolute;
-  inset: -6px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 215, 0, 0.55) 0%
-    rgba(255, 215, 0, 0.15) 35%,
-    rgba(255, 215, 0, 0.05) 55%,
-    transparent 70%
-  );
-  opacity: 0;
-  z-index: -1;
-  animation: crownGlow 3.5s ease-in-out infinite;
-}
-
-/* The actual pulse animation */
-@keyframes crownGlow {
-  0%   { opacity: 0; }
-  10%  { opacity: 0.85; }
-  25%  { opacity: 0.4; }
-  40%  { opacity: 0.85; }
-  55%  { opacity: 0; }
-  100% { opacity: 0; }
+@keyframes crownPop{
+  0%, 100%{
+    transform: scale(1);
+    filter:
+      drop-shadow(0 0 0px rgba(255,215,0,0))
+      drop-shadow(0 0 0px rgba(255,215,0,0));
+  }
+  35%{
+    transform: scale(1.06);
+    filter:
+      drop-shadow(0 0 8px rgba(255,215,0,0.55))
+      drop-shadow(0 0 14px rgba(255,215,0,0.35));
+  }
+  55%{
+    transform: scale(1.02);
+    filter:
+      drop-shadow(0 0 5px rgba(255,215,0,0.40))
+      drop-shadow(0 0 10px rgba(255,215,0,0.25));
+  }
 }
 
 /* Respect reduced motion users */
-@media (prefers-reduced-motion: reduce) {
-  .crownPulse::after {
-    animation: none;
-  }
+@media (prefers-reduced-motion: reduce){
+  .crownPulse{ animation:none; filter:none; }
 }
   </style>
 </head>
@@ -732,7 +727,7 @@ function updateAuthButtonUI() {
 /** KEEP your leaderboard icons exactly as you had them **/
 function topIcon(rank) {
   if (rank === 1) {
-    return '<span class="crownPulse"><i class="fa-solid fa-crown text-yellow-400"></i></span>';
+return '<span class="crownPulse">👑</span>';
   }
   if (rank === 2) return '<i class="fa-solid fa-medal text-gray-300"></i>';
   if (rank === 3) return '<i class="fa-solid fa-medal text-orange-400"></i>';
