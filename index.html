@@ -67,6 +67,46 @@
       line-height: 1.15;
       text-shadow: 0 2px 0 rgba(0,0,0,.35);
     }
+/* ===== Top 3 shimmer ===== */
+.lbTop3 {
+  position: relative;
+  overflow: hidden;
+}
+
+.lbTop3::after {
+  content: "";
+  position: absolute;
+  inset: -40% -60%;
+  transform: rotate(20deg) translateX(-120%);
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.10) 35%,
+    rgba(255,255,255,0.35) 50%,
+    rgba(255,255,255,0.10) 65%,
+    transparent 100%
+  );
+  animation: lbShimmer 4.5s ease-in-out infinite;
+}
+
+@keyframes lbShimmer {
+  0%   { transform: rotate(20deg) translateX(-120%); opacity: 0; }
+  8%   { opacity: 0.85; }
+  22%  { transform: rotate(20deg) translateX(120%); opacity: 0; }
+  100% { transform: rotate(20deg) translateX(120%); opacity: 0; }
+}
+
+/* Optional: tiny glow so it feels "top 3" even between shimmers */
+.lbTop1 { box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 0 18px rgba(255,215,0,.12); }
+.lbTop2 { box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 0 18px rgba(192,192,192,.10); }
+.lbTop3rd { box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 0 18px rgba(205,127,50,.10); }
+
+/* Respect reduced motion users */
+@media (prefers-reduced-motion: reduce) {
+  .lbTop3::after { animation: none; }
+}   
   </style>
 </head>
 
@@ -803,16 +843,22 @@ function renderLeaderboard() {
     const name = p.display_name || p.twitch_login || "";
     const pts = (p.points ?? 0);
 
-    el.innerHTML += `
-      <div class="flex items-center justify-between bg-base-300 rounded-xl px-4 py-3">
-        <div class="flex items-center gap-3">
-          ${topIcon(rank)}
-          <div class="font-bold">#${rank}</div>
-          <div>${escapeHtml(name)}</div>
-        </div>
-        <div class="badge badge-primary text-lg">${pts}</div>
-      </div>
-    `;
+const shimmerClass =
+  rank === 1 ? "lbTop3 lbTop1" :
+  rank === 2 ? "lbTop3 lbTop2" :
+  rank === 3 ? "lbTop3 lbTop3rd" :
+  "";
+
+el.innerHTML += `
+  <div class="flex items-center justify-between bg-base-300 rounded-xl px-4 py-3 ${shimmerClass}">
+    <div class="flex items-center gap-3">
+      ${topIcon(rank)}
+      <div class="font-bold">#${rank}</div>
+      <div>${escapeHtml(name)}</div>
+    </div>
+    <div class="badge badge-primary text-lg">${pts}</div>
+  </div>
+`;
   });
 
   safeText("lbPageInfo", `Page ${lbPage} of ${pages}`);
