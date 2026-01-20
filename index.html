@@ -1302,18 +1302,29 @@ function wireButtons(){
     refreshPoll({ manual:true });
   });
 
-  // NEW: leaderboard refresh button
- on("lbRefreshBtn", "click", async () => {
+// NEW: leaderboard refresh button (refresh leaderboard + account at the same time)
+on("lbRefreshBtn", "click", async () => {
   if (lbBusy) return;
   lbBusy = true;
+
   setLbRefreshBtnLoading(true);
   setLbOverlay(true, "Refreshing…");
+
+  // Optional: if you added an overlay to the meCard, turn it on here too:
+  // setMeOverlay(true, "Refreshing…");
+
   try {
-    await refreshLeaderboard({ showOverlay:false, quietIfUnchanged:false });
-    await refreshMe(); // NEW: also refresh account info box
+    await Promise.all([
+      refreshLeaderboard({ showOverlay:false, quietIfUnchanged:false }),
+      refreshMe(true) // pass true so refreshMe shows "refreshing" overlay instead of "logging in"
+    ]);
   } finally {
     setLbOverlay(false);
     setLbRefreshBtnLoading(false);
+
+    // Optional:
+    // setMeOverlay(false);
+
     lbBusy = false;
   }
 });
