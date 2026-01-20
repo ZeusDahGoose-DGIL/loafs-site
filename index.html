@@ -224,39 +224,50 @@
           <div class="lg:col-span-3 lg:sticky lg:top-4 space-y-4">
 
             <!-- IMPORTANT: removed the empty min-h spacer so "How it works" lines up with the leaderboard when logged out -->
-            <div>
-              <div id="acctLoading" class="card bg-base-200 shadow hidden min-h-[260px]">
-                <div class="card-body">
-                  <div class="text-lg font-bold">Loading Account Info…</div>
-                  <div class="text-sm opacity-70">
-                    Checking your Twitch login and pulling your Loaf Points.
-                  </div>
-                  <div class="mt-3 flex items-center gap-3 opacity-70">
-                    <span class="loading loading-spinner loading-md"></span>
-                    <span class="text-sm">Please wait…</span>
-                  </div>
-                </div>
-              </div>
+<div>
+  <!-- Shown only during FIRST login load (not on auto-refresh) -->
+  <div id="acctLoading" class="card bg-base-200 shadow hidden min-h-[260px]">
+    <div class="card-body">
+      <div class="text-lg font-bold">Loading Account Info…</div>
+      <div class="text-sm opacity-70">
+        Checking your Twitch login and pulling your Loaf Points.
+      </div>
+      <div class="mt-3 flex items-center gap-3 opacity-70">
+        <span class="loading loading-spinner loading-md"></span>
+        <span class="text-sm">Please wait…</span>
+      </div>
+    </div>
+  </div>
 
-              <div id="meCard" class="card bg-base-200 shadow hidden min-h-[260px]">
-                <div class="card-body">
-                  <div class="text-sm opacity-70">Logged in as</div>
-                  <div id="meName" class="text-xl font-bold"></div>
+  <!-- Normal account card -->
+  <div id="meCard" class="card bg-base-200 shadow hidden min-h-[260px]">
+    <div class="card-body relative">
+      <div class="text-sm opacity-70">Logged in as</div>
+      <div id="meName" class="text-xl font-bold"></div>
 
-                  <div class="mt-3 grid grid-cols-1 gap-3">
-                    <div class="bg-base-300 rounded-xl p-3">
-                      <div class="text-sm opacity-70">Loaf Points (current)</div>
-                      <div id="meTotalPoints" class="text-3xl font-extrabold">0</div>
-                    </div>
+      <div class="mt-3 grid grid-cols-1 gap-3">
+        <div class="bg-base-300 rounded-xl p-3">
+          <div class="text-sm opacity-70">Loaf Points (current)</div>
+          <div id="meTotalPoints" class="text-3xl font-extrabold">0</div>
+        </div>
 
-                    <div class="bg-base-300 rounded-xl p-3">
-                      <div class="text-sm opacity-70">Board rank</div>
-                      <div id="meRank" class="text-3xl font-extrabold">—</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div class="bg-base-300 rounded-xl p-3">
+          <div class="text-sm opacity-70">Board rank</div>
+          <div id="meRank" class="text-3xl font-extrabold">—</div>
+        </div>
+      </div>
+
+      <!-- NEW: overlay for auto-refresh -->
+      <div id="meOverlay" class="overlayBox hidden">
+        <div class="flex items-center gap-3 bg-base-300 rounded-xl px-4 py-3 shadow">
+          <span class="loading loading-spinner loading-md"></span>
+          <div class="text-lg font-bold" id="meOverlayText">Refreshing…</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
             <div id="loginHint" class="card bg-base-200 shadow">
               <div class="card-body">
