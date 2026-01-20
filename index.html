@@ -85,21 +85,23 @@
     0 0 0 1px rgba(255,255,255,.08),
     0 0 18px rgba(205,127,50,.18);
 }
-/* ===== #1 Crown glow pulse ===== */
+/* ===== #1 Crown glow pulse (Font Awesome crown) ===== */
 .crownPulse {
   position: relative;
+  display: inline-block;
+  line-height: 1;
 }
 
 .crownPulse::after {
   content: "";
   position: absolute;
   inset: -6px;
-  border-radius: 50%;
+  border-radius: 999px;
   background: radial-gradient(
     circle,
-    rgba(255, 215, 0, 0.35) 0%,
-    rgba(255, 215, 0, 0.15) 35%,
-    rgba(255, 215, 0, 0.05) 55%,
+    rgba(255, 215, 0, 0.55) 0%,
+    rgba(255, 215, 0, 0.25) 35%,
+    rgba(255, 215, 0, 0.10) 55%,
     transparent 70%
   );
   opacity: 0;
@@ -107,21 +109,18 @@
   animation: crownGlow 3.5s ease-in-out infinite;
 }
 
-/* The actual pulse animation */
 @keyframes crownGlow {
   0%   { opacity: 0; }
-  10%  { opacity: 0.85; }
-  25%  { opacity: 0.4; }
-  40%  { opacity: 0.85; }
+  10%  { opacity: 0.9; }
+  25%  { opacity: 0.5; }
+  40%  { opacity: 0.9; }
   55%  { opacity: 0; }
   100% { opacity: 0; }
 }
 
 /* Respect reduced motion users */
 @media (prefers-reduced-motion: reduce) {
-  .crownPulse::after {
-    animation: none;
-  }
+  .crownPulse::after { animation: none; }
 }
   </style>
 </head>
