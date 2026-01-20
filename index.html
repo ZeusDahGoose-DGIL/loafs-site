@@ -693,9 +693,7 @@ function updateAuthButtonUI() {
 
 /** KEEP your leaderboard icons exactly as you had them **/
 function topIcon(rank) {
-  if (rank === 1) {
-    return '<span class="crownPulse"><i class="fa-solid fa-crown text-yellow-400"></i></span>';
-  }
+  if (rank === 1) return '<i class="fa-solid fa-crown text-yellow-400"></i>';
   if (rank === 2) return '<i class="fa-solid fa-medal text-gray-300"></i>';
   if (rank === 3) return '<i class="fa-solid fa-medal text-orange-400"></i>';
   return '<i class="fa-solid fa-user opacity-60"></i>';
