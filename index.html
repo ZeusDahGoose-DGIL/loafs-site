@@ -853,19 +853,35 @@ async function refreshLeaderboard({showOverlay=false, quietIfUnchanged=true, ove
 }
 
 /** ====== ACCOUNT (ME) ====== **/
-async function refreshMe() {
-  if (!getToken()) {
+function setMeOverlay(show, text="Refreshing…"){
+  safeText("meOverlayText", text);
+  safeClassToggle("meOverlay", "hidden", !show);
+}
+
+async function refreshMe({mode="auto"} = {}) {
+  const hasToken = !!getToken();
+
+  if (!hasToken) {
     safeClassToggle("acctLoading", "hidden", true);
     safeClassToggle("meCard", "hidden", true);
     safeClassToggle("loginHint", "hidden", false);
+    setMeOverlay(false);
     updateAuthButtonUI();
     return;
   }
 
   updateAuthButtonUI();
-  safeClassToggle("loginHint", "hidden", true);
-  safeClassToggle("meCard", "hidden", true);
-  safeClassToggle("acctLoading", "hidden", false);
+
+  const meCard = $("meCard");
+  const meAlreadyVisible = meCard && !meCard.classList.contains("hidden");
+
+  if (mode === "auto" && meAlreadyVisible) {
+    setMeOverlay(true, "Refreshing…");
+  } else {
+    safeClassToggle("loginHint", "hidden", true);
+    safeClassToggle("meCard", "hidden", true);
+    safeClassToggle("acctLoading", "hidden", false);
+  }
 
   try {
     const r = await fetch("https://api.twitch.tv/helix/users", {
@@ -878,9 +894,12 @@ async function refreshMe() {
     if (!r.ok) {
       sessionStorage.removeItem("twitch_token");
       updateAuthButtonUI();
+
       safeClassToggle("acctLoading", "hidden", true);
       safeClassToggle("meCard", "hidden", true);
       safeClassToggle("loginHint", "hidden", false);
+      setMeOverlay(false);
+
       setStatus("Session expired. Please login again.");
       return;
     }
@@ -902,12 +921,18 @@ async function refreshMe() {
     safeText("meRank", g.rank ? ("#" + g.rank) : "—");
 
     safeClassToggle("acctLoading", "hidden", true);
+    safeClassToggle("loginHint", "hidden", true);
     safeClassToggle("meCard", "hidden", false);
+
   } catch (err) {
-    safeClassToggle("acctLoading", "hidden", true);
-    safeClassToggle("meCard", "hidden", true);
-    safeClassToggle("loginHint", "hidden", false);
-    setStatus("Could not load account info. Try logging out and back in.");
+    if (!(mode === "auto" && meAlreadyVisible)) {
+      safeClassToggle("acctLoading", "hidden", true);
+      safeClassToggle("meCard", "hidden", true);
+      safeClassToggle("loginHint", "hidden", false);
+      setStatus("Could not load account info. Try logging out and back in.");
+    }
+  } finally {
+    setMeOverlay(false);
   }
 }
 
@@ -1292,7 +1317,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // auto refresh (quiet)
   setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
-  setInterval(() => refreshMe(), 30000);
+  setInterval(() => refreshMe({ mode: "auto" }), 30000);
   setInterval(() => refreshPoll({manual:false}), 30000);
 });
 </script>
