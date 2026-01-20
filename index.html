@@ -846,10 +846,10 @@ el.innerHTML += `
 async function refreshLeaderboard({showOverlay=false, quietIfUnchanged=true, overlayText="Loading…"} = {}) {
   const firstLoad = (lastLeaderboardHash === "");
 
-  if (firstLoad) {
-    showLbFirstLoadBox(true, "Loading leaderboard…");
-    setStatus("Loading leaderboard...");
-  }
+ if (firstLoad) {
+  showLbFirstLoadBox(true, "Loading leaderboard…");
+  // removed setStatus here so the header/tabs don't jump
+}
 
   if (showOverlay && !firstLoad) setLbOverlay(true, overlayText);
 
@@ -1303,19 +1303,20 @@ function wireButtons(){
   });
 
   // NEW: leaderboard refresh button
-  on("lbRefreshBtn", "click", async () => {
-    if (lbBusy) return;
-    lbBusy = true;
-    setLbRefreshBtnLoading(true);
-    setLbOverlay(true, "Refreshing…");
-    try {
-      await refreshLeaderboard({showOverlay:false, quietIfUnchanged:false});
-    } finally {
-      setLbOverlay(false);
-      setLbRefreshBtnLoading(false);
-      lbBusy = false;
-    }
-  });
+ on("lbRefreshBtn", "click", async () => {
+  if (lbBusy) return;
+  lbBusy = true;
+  setLbRefreshBtnLoading(true);
+  setLbOverlay(true, "Refreshing…");
+  try {
+    await refreshLeaderboard({ showOverlay:false, quietIfUnchanged:false });
+    await refreshMe(); // NEW: also refresh account info box
+  } finally {
+    setLbOverlay(false);
+    setLbRefreshBtnLoading(false);
+    lbBusy = false;
+  }
+});
 }
 
 /** ====== Init (wrapped so mobile won't race/half-load) ====== **/
