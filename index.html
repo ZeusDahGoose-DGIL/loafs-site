@@ -85,6 +85,44 @@
     0 0 0 1px rgba(255,255,255,.08),
     0 0 18px rgba(205,127,50,.18);
 }
+/* ===== #1 Crown glow pulse ===== */
+.crownPulse {
+  position: relative;
+}
+
+.crownPulse::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 215, 0, 0.35) 0%,
+    rgba(255, 215, 0, 0.15) 35%,
+    rgba(255, 215, 0, 0.05) 55%,
+    transparent 70%
+  );
+  opacity: 0;
+  z-index: -1;
+  animation: crownGlow 5.5s ease-in-out infinite;
+}
+
+/* The actual pulse animation */
+@keyframes crownGlow {
+  0%   { opacity: 0; }
+  10%  { opacity: 0.85; }
+  25%  { opacity: 0.4; }
+  40%  { opacity: 0.85; }
+  55%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* Respect reduced motion users */
+@media (prefers-reduced-motion: reduce) {
+  .crownPulse::after {
+    animation: none;
+  }
+}
   </style>
 </head>
 
@@ -693,7 +731,9 @@ function updateAuthButtonUI() {
 
 /** KEEP your leaderboard icons exactly as you had them **/
 function topIcon(rank) {
-  if (rank === 1) return '<i class="fa-solid fa-crown text-yellow-400"></i>';
+  if (rank === 1) {
+    return '<span class="crownPulse"><i class="fa-solid fa-crown text-yellow-400"></i></span>';
+  }
   if (rank === 2) return '<i class="fa-solid fa-medal text-gray-300"></i>';
   if (rank === 3) return '<i class="fa-solid fa-medal text-orange-400"></i>';
   return '<i class="fa-solid fa-user opacity-60"></i>';
