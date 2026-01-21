@@ -861,19 +861,17 @@ function renderLeaderboard() {
     const pts = (p.points ?? 0);
 
 el.innerHTML += `
-  <div class="lbRow flex items-center justify-between bg-base-300 rounded-xl px-4 py-3 ${
+  <div class="lbRow flex flex-col sm:flex-row sm:items-center sm:justify-between bg-base-300 rounded-xl px-4 py-3 ${
     rank === 1 ? "lbTop1" : rank === 2 ? "lbTop2" : rank === 3 ? "lbTop3rd" : ""
   }">
-    <div class="lbLeft min-w-0">
-      <div class="lbNameRow">
-        ${topIcon(rank)}
-        <div class="font-bold">#${rank}</div>
-        <div class="lbName">${escapeHtml(name)}</div>
-      </div>
+    <div class="lbLeft min-w-0 flex items-center gap-3">
+      ${topIcon(rank)}
+      <div class="font-bold">#${rank}</div>
+      <div class="lbName truncate">${escapeHtml(name)}</div>
+    </div>
 
-      <div class="lbPoints">
-        <div class="badge badge-primary text-lg">${pts}</div>
-      </div>
+    <div class="lbPoints mt-2 sm:mt-0 self-start sm:self-auto">
+      <div class="badge badge-primary text-lg">${pts}</div>
     </div>
   </div>
 `;
