@@ -85,6 +85,45 @@
     0 0 0 1px rgba(255,255,255,.08),
     0 0 18px rgba(205,127,50,.18);
 }
+    /* ===== Mobile: stack leaderboard row (points under name) ===== */
+@media (max-width: 640px) {
+  .lbRow {
+    align-items: flex-start !important;
+    gap: 10px;
+  }
+
+  .lbLeft {
+    min-width: 0; /* allows truncation */
+    flex: 1 1 auto;
+  }
+
+  .lbNameRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .lbName {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lbPoints {
+    margin-left: 44px; /* lines up under the name after the icon+# */
+    margin-top: 6px;
+    align-self: flex-start;
+  }
+
+  /* Slightly smaller pill on mobile so it feels cleaner */
+  .lbPoints .badge {
+    font-size: 1rem; /* text-base-ish */
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
   </style>
 </head>
 
@@ -822,15 +861,20 @@ function renderLeaderboard() {
     const pts = (p.points ?? 0);
 
 el.innerHTML += `
-  <div class="flex items-center justify-between bg-base-300 rounded-xl px-4 py-3 ${
+  <div class="lbRow flex items-center justify-between bg-base-300 rounded-xl px-4 py-3 ${
     rank === 1 ? "lbTop1" : rank === 2 ? "lbTop2" : rank === 3 ? "lbTop3rd" : ""
   }">
-    <div class="flex items-center gap-3">
-      ${topIcon(rank)}
-      <div class="font-bold">#${rank}</div>
-      <div>${escapeHtml(name)}</div>
+    <div class="lbLeft min-w-0">
+      <div class="lbNameRow">
+        ${topIcon(rank)}
+        <div class="font-bold">#${rank}</div>
+        <div class="lbName">${escapeHtml(name)}</div>
+      </div>
+
+      <div class="lbPoints">
+        <div class="badge badge-primary text-lg">${pts}</div>
+      </div>
     </div>
-    <div class="badge badge-primary text-lg">${pts}</div>
   </div>
 `;
   });
