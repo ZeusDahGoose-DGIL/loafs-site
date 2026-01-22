@@ -124,38 +124,26 @@
     padding-right: 14px;
   }
 }
-/* Current Tournament active glow (orbiting tiny spark) */
+/* Current Tournament active glow (clean, no spin) */
 .ctActive{
   position: relative;
-  box-shadow: 0 0 0 1px rgba(255,255,255,.10), 0 0 18px rgba(255,255,255,.12);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.10),
+    0 0 14px rgba(255,255,255,.10);
+  animation: ctPulse 2.6s ease-in-out infinite;
 }
 
-.ctActive::after{
-  content:"";
-  position:absolute;
-  inset:-3px;
-  border-radius:0.75rem;
-  pointer-events:none;
-
-  /* a small spark that moves around */
-  background: radial-gradient(circle, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 55%);
-  width: 10px;
-  height: 10px;
-
-  /* start position + orbit */
-  top: -3px;
-  left: 50%;
-  transform: translateX(-50%);
-  animation: ctOrbit 3.2s linear infinite;
-  filter: blur(.2px);
-}
-
-@keyframes ctOrbit{
-  0%   { transform: translateX(-50%) translate(0,0); }
-  25%  { transform: translateX(-50%) translate(120px, 20px); }
-  50%  { transform: translateX(-50%) translate(0, 46px); }
-  75%  { transform: translateX(-50%) translate(-120px, 20px); }
-  100% { transform: translateX(-50%) translate(0,0); }
+@keyframes ctPulse{
+  0%, 100%{
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.10),
+      0 0 14px rgba(255,255,255,.10);
+  }
+  50%{
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.14),
+      0 0 22px rgba(255,255,255,.18);
+  }
 }
   </style>
 </head>
