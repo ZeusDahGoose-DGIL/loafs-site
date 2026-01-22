@@ -967,7 +967,7 @@ async function refreshCurrentTournamentUI({silent=false} = {}){
 
     // Fill modal
     safeText("ctTitle", j.tournament_name || "Current Tournament");
-    safeText("ctGame", data.game ? `Game: ${data.game}` : "");
+    safeText("ctGame", j.game ? `Game: ${j.game}` : "");
     safeText("ctRegion", j.region ? `Region: ${j.region}` : "");
 
     const startDT = combineDateAndTime(j.start_date, j.start_time);
