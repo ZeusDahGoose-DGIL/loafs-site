@@ -967,11 +967,12 @@ async function refreshCurrentTournamentUI({silent=false} = {}){
       safeText("ctPoolsLine", "");
     }
 
-    if (regCloseDT){
-      safeText("ctRegCloseLine", `Registration closes: ${fmtLocal(regCloseDT)} at ${fmtTimeLocal(regCloseDT)}`);
-    } else {
-      safeText("ctRegCloseLine", "");
-    }
+if (regCloseDT){
+  safeText("ctRegCloseLine", `${fmtLocal(regCloseDT)} at ${fmtTimeLocal(regCloseDT)}`);
+} else {
+  safeText("ctRegCloseLine", "");
+}
+
 
     const signup = String(j.signup_url || "").trim();
     const signupBtn = $("ctSignupBtn");
