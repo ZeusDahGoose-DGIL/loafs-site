@@ -124,6 +124,33 @@
     padding-right: 14px;
   }
 }
+    /* Current Tournament active glow (button) */
+.ctActive {
+  position: relative;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 0 18px rgba(255,255,255,.14);
+}
+
+.ctActive::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 0.75rem;
+  pointer-events: none;
+  background: conic-gradient(from 0deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.25) 20%,
+    rgba(255,255,255,0) 40%,
+    rgba(255,255,255,0) 100%);
+  mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+  -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+  padding: 2px;
+  opacity: .55;
+  animation: ctSpin 3.5s linear infinite;
+}
+
+@keyframes ctSpin {
+  to { transform: rotate(360deg); }
+}
   </style>
 </head>
 
@@ -153,18 +180,25 @@
       </div>
     </div>
 
-    <!-- TOP RIGHT CONTROLS (always visible) -->
-    <div class="flex justify-end -mt-2">
-      <div class="flex items-center gap-2">
-        <!-- Board dropdown shows ONLY on Leaderboards tab -->
-        <select id="boardSelect" class="select select-bordered hidden"></select>
+<!-- TOP CONTROLS (always visible) -->
+<div class="flex justify-between items-center -mt-2 gap-2">
+  <!-- LEFT: Current Tournament button -->
+  <button id="ctBtn" class="btn btn-outline">
+    <i class="fa-solid fa-trophy"></i>
+    <span>Current Tournament</span>
+    <span id="ctDot" class="ml-2 inline-block w-2.5 h-2.5 rounded-full bg-base-100/40"></span>
+  </button>
 
-        <button id="authBtn" class="btn btn-primary">
-          <i class="fa-brands fa-twitch"></i>
-          <span id="authBtnText">Login</span>
-        </button>
-      </div>
-    </div>
+  <!-- RIGHT: board dropdown + login -->
+  <div class="flex items-center gap-2">
+    <select id="boardSelect" class="select select-bordered hidden"></select>
+
+    <button id="authBtn" class="btn btn-primary">
+      <i class="fa-brands fa-twitch"></i>
+      <span id="authBtnText">Login</span>
+    </button>
+  </div>
+</div>
 
     <!-- PANELS -->
     <div class="space-y-4">
@@ -654,7 +688,80 @@
 
     </div>
   </div>
+<!-- Current Tournament Modal -->
+<div id="ctModal" class="fixed inset-0 z-[9998] hidden">
+  <!-- backdrop -->
+  <div id="ctBackdrop" class="absolute inset-0 bg-black/60"></div>
 
+  <!-- modal card -->
+  <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div class="card bg-base-200 shadow-xl w-full max-w-xl max-h-[85vh] overflow-auto relative">
+      <div class="card-body space-y-3">
+
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="text-xl font-extrabold flex items-center gap-2">
+              <i class="fa-solid fa-trophy"></i>
+              <span id="ctTitle">Current Tournament</span>
+            </div>
+            <div id="ctRegion" class="text-sm opacity-70"></div>
+          </div>
+
+          <button id="ctClose" class="btn btn-sm btn-ghost">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div id="ctLoading" class="bg-base-300 rounded-xl px-4 py-4">
+          <div class="flex items-center gap-3">
+            <span class="loading loading-spinner loading-md"></span>
+            <div>
+              <div class="text-lg font-bold">Loading…</div>
+              <div class="text-sm opacity-70">Please wait…</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="ctContent" class="hidden space-y-3">
+          <div class="bg-base-300 rounded-xl p-4 space-y-2">
+            <div id="ctDateLine" class="text-lg font-bold"></div>
+            <div id="ctPoolsLine" class="opacity-80"></div>
+            <div class="text-sm opacity-70">Times shown auto-convert to your timezone.</div>
+          </div>
+
+          <div class="bg-base-300 rounded-xl p-4 space-y-2">
+            <div class="font-bold">Registration</div>
+            <div id="ctRegCloseLine" class="opacity-80"></div>
+          </div>
+
+          <div id="ctNotesBox" class="bg-base-300 rounded-xl p-4 space-y-2 hidden">
+            <div class="font-bold">Notes</div>
+            <div id="ctNotes" class="opacity-80 whitespace-pre-wrap"></div>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <a id="ctSignupBtn" class="btn btn-success" href="#" target="_blank" rel="noopener">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              Sign Up
+            </a>
+
+            <button id="ctPrizeBtn" class="btn btn-outline">
+              <i class="fa-solid fa-sack-dollar"></i>
+              View Prize Pool
+            </button>
+          </div>
+        </div>
+
+        <div id="ctEmpty" class="hidden bg-base-300 rounded-xl p-4">
+          <div class="font-bold">No active tournament right now.</div>
+          <div class="text-sm opacity-70 mt-1">Check back soon — I’ll update this when the next DGIL is announced.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+  
 <script>
 /** ====== CONFIG ====== **/
 const API_BASE = "https://script.google.com/macros/s/AKfycbwg_pn2J8399br-rnzHT36BG2JtIgB1nPEfya9PTV9TD__kwidzJUZZqRfb-o7I5baHkA/exec";
@@ -759,6 +866,143 @@ function apiPost(json){
 function uuid(){
   if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
   return String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+}
+
+  function openCtModal(){
+  safeClassToggle("ctModal", "hidden", false);
+  document.body.style.overflow = "hidden";
+}
+
+function closeCtModal(){
+  safeClassToggle("ctModal", "hidden", true);
+  document.body.style.overflow = "";
+}
+
+function fmtLocal(dt){
+  // dt is a Date
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  }).format(dt);
+}
+
+function fmtTimeLocal(dt){
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(dt);
+}
+
+// Combines a "date-only" + "time-only" value into a real Date.
+// Works even if your time-only comes through as that 1899 thing.
+function combineDateAndTime(dateVal, timeVal){
+  const d = new Date(dateVal);
+  const t = new Date(timeVal);
+
+  if (!Number.isFinite(d.getTime())) return null;
+
+  let hh = 0, mm = 0;
+  if (Number.isFinite(t.getTime())) {
+    hh = t.getHours();
+    mm = t.getMinutes();
+  } else {
+    // If timeVal is a string like "5:30 PM"
+    const s = String(timeVal || "").trim();
+    const m = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (m){
+      hh = parseInt(m[1],10);
+      mm = parseInt(m[2],10);
+      const ap = (m[3]||"").toUpperCase();
+      if (ap === "PM" && hh < 12) hh += 12;
+      if (ap === "AM" && hh === 12) hh = 0;
+    }
+  }
+
+  d.setHours(hh, mm, 0, 0);
+  return d;
+}
+
+async function fetchCurrentTournament(){
+  // if your route is named differently in Apps Script, this is the only line you change:
+  const j = await apiGet("current_tournament", {});
+  return j;
+}
+
+async function refreshCurrentTournamentUI({silent=false} = {}){
+  const btn = $("ctBtn");
+  const dot = $("ctDot");
+
+  try {
+    const j = await fetchCurrentTournament();
+
+    const active = !!j.active;
+    if (btn) btn.classList.toggle("ctActive", active);
+    if (dot) dot.classList.toggle("bg-success", active);
+
+    // If we’re not currently showing the modal, stop here.
+    // (We still wanted the glow to update.)
+    if (silent) return;
+
+    // Modal loading states
+    safeClassToggle("ctLoading", "hidden", false);
+    safeClassToggle("ctContent", "hidden", true);
+    safeClassToggle("ctEmpty", "hidden", true);
+
+    if (!active){
+      safeText("ctTitle", "Current Tournament");
+      safeText("ctRegion", "");
+      safeClassToggle("ctLoading", "hidden", true);
+      safeClassToggle("ctEmpty", "hidden", false);
+      return;
+    }
+
+    // Fill modal
+    safeText("ctTitle", j.tournament_name || "Current Tournament");
+    safeText("ctRegion", j.region ? `Region: ${j.region}` : "");
+
+    const startDT = combineDateAndTime(j.start_date, j.start_time);
+    const regCloseDT = combineDateAndTime(j.reg_close_date, j.reg_close_time);
+
+    if (startDT){
+      safeText("ctDateLine", fmtLocal(startDT));
+      safeText("ctPoolsLine", `Pools Start: ${fmtTimeLocal(startDT)}`);
+    } else {
+      safeText("ctDateLine", "");
+      safeText("ctPoolsLine", "");
+    }
+
+    if (regCloseDT){
+      safeText("ctRegCloseLine", `Registration closes: ${fmtLocal(regCloseDT)} at ${fmtTimeLocal(regCloseDT)}`);
+    } else {
+      safeText("ctRegCloseLine", "");
+    }
+
+    const signup = String(j.signup_url || "").trim();
+    const signupBtn = $("ctSignupBtn");
+    if (signupBtn){
+      signupBtn.href = signup || "#";
+      signupBtn.classList.toggle("btn-disabled", !signup);
+      signupBtn.setAttribute("aria-disabled", (!signup).toString());
+    }
+
+    const notes = String(j.notes || "").trim();
+    safeText("ctNotes", notes);
+    safeClassToggle("ctNotesBox", "hidden", !notes);
+
+    safeClassToggle("ctLoading", "hidden", true);
+    safeClassToggle("ctContent", "hidden", false);
+
+  } catch (e) {
+    if (!silent){
+      safeClassToggle("ctLoading", "hidden", true);
+      safeClassToggle("ctContent", "hidden", true);
+      safeClassToggle("ctEmpty", "hidden", false);
+      safeText("ctTitle", "Current Tournament");
+      safeText("ctRegion", "");
+    }
+  }
 }
 
 /** ====== LOAF FX ====== **/
@@ -1342,6 +1586,19 @@ function wireButtons(){
   on("pollRefreshBtn", "click", () => {
     if (voteBusy) return;
     refreshPoll({ manual:true });
+
+      // Current Tournament modal open/close
+  on("ctBtn", "click", async () => {
+    openCtModal();
+    await refreshCurrentTournamentUI({silent:false});
+  });
+
+  on("ctClose", "click", () => closeCtModal());
+  on("ctBackdrop", "click", () => closeCtModal());
+
+  on("ctPrizeBtn", "click", () => {
+    closeCtModal();
+    setActiveTab("tab_prizepool");
   });
 
 // NEW: leaderboard refresh button (refresh leaderboard + account at the same time)
@@ -1393,6 +1650,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
   setInterval(() => refreshMe({ mode: "auto" }), 30000);
   setInterval(() => refreshPoll({manual:false}), 30000);
+
+  // Current Tournament button glow updater
+  await refreshCurrentTournamentUI({silent:true});
+  setInterval(() => refreshCurrentTournamentUI({silent:true}), 30000);
 });
 </script>
 </body>
