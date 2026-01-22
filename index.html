@@ -1586,8 +1586,9 @@ function wireButtons(){
   on("pollRefreshBtn", "click", () => {
     if (voteBusy) return;
     refreshPoll({ manual:true });
+  });
 
-      // Current Tournament modal open/close
+  // Current Tournament modal open/close
   on("ctBtn", "click", async () => {
     openCtModal();
     await refreshCurrentTournamentUI({silent:false});
@@ -1601,34 +1602,26 @@ function wireButtons(){
     setActiveTab("tab_prizepool");
   });
 
-// NEW: leaderboard refresh button (refresh leaderboard + account at the same time)
-on("lbRefreshBtn", "click", async () => {
-  if (lbBusy) return;
-  lbBusy = true;
+  // Leaderboard refresh button (refresh leaderboard + account at the same time)
+  on("lbRefreshBtn", "click", async () => {
+    if (lbBusy) return;
+    lbBusy = true;
 
-  setLbRefreshBtnLoading(true);
-  setLbOverlay(true, "Refreshing…");
+    setLbRefreshBtnLoading(true);
+    setLbOverlay(true, "Refreshing…");
 
-  // Optional: if you added an overlay to the meCard, turn it on here too:
-  // setMeOverlay(true, "Refreshing…");
-
-  try {
-    await Promise.all([
-      refreshLeaderboard({ showOverlay:false, quietIfUnchanged:false }),
-      refreshMe(true) // pass true so refreshMe shows "refreshing" overlay instead of "logging in"
-    ]);
-  } finally {
-    setLbOverlay(false);
-    setLbRefreshBtnLoading(false);
-
-    // Optional:
-    // setMeOverlay(false);
-
-    lbBusy = false;
-  }
-});
+    try {
+      await Promise.all([
+        refreshLeaderboard({ showOverlay:false, quietIfUnchanged:false }),
+        refreshMe({ mode: "auto" }) // <-- fix: pass the right argument shape
+      ]);
+    } finally {
+      setLbOverlay(false);
+      setLbRefreshBtnLoading(false);
+      lbBusy = false;
+    }
+  });
 }
-
 /** ====== Init (wrapped so mobile won't race/half-load) ====== **/
 document.addEventListener("DOMContentLoaded", async () => {
   updateAuthButtonUI();
