@@ -700,13 +700,19 @@ html { scrollbar-gutter: stable; }
       <div class="card-body space-y-3">
 
         <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="text-2xl sm:text-3xl font-extrabold flex items-center gap-2">
-              <i class="fa-solid fa-trophy"></i>
-              <span id="ctTitle">Current Tournament</span>
-            </div>
-            <div id="ctRegion" class="text-base sm:text-lg opacity-80"></div>
-          </div>
+         <div>
+  <!-- Title -->
+  <div class="text-2xl font-extrabold flex items-center gap-2">
+    <i class="fa-solid fa-trophy"></i>
+    <span id="ctTitle">Current Tournament</span>
+  </div>
+
+  <!-- Game line (NEW) -->
+  <div id="ctGame" class="text-base font-semibold opacity-80 mt-1"></div>
+
+  <!-- Region line (slightly bigger than before) -->
+  <div id="ctRegion" class="text-base opacity-70"></div>
+</div>
 
           <button id="ctClose" class="btn btn-sm btn-ghost">
             <i class="fa-solid fa-xmark"></i>
@@ -961,6 +967,7 @@ async function refreshCurrentTournamentUI({silent=false} = {}){
 
     // Fill modal
     safeText("ctTitle", j.tournament_name || "Current Tournament");
+    safeText("ctGame", data.game ? `Game: ${data.game}` : "");
     safeText("ctRegion", j.region ? `Region: ${j.region}` : "");
 
     const startDT = combineDateAndTime(j.start_date, j.start_time);
