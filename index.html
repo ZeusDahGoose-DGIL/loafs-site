@@ -85,6 +85,40 @@
     0 0 0 1px rgba(255,255,255,.08),
     0 0 18px rgba(205,127,50,.18);
 }
+    /* ===== Desktop/default: single-line leaderboard row ===== */
+.lbRow {
+  align-items: center;
+}
+
+.lbLeft {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.lbNameRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.lbName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lbPoints {
+  margin-left: auto;
+  margin-top: 0;
+  align-self: center;
+  flex: 0 0 auto;
+}
     /* ===== Mobile: stack leaderboard row (points under name) ===== */
 @media (max-width: 640px) {
   .lbRow {
