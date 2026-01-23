@@ -152,6 +152,22 @@ html { scrollbar-gutter: stable; }
 @supports not (scrollbar-gutter: stable) {
   html { overflow-y: scroll; }
 }
+    .lbNoResults {
+  text-align: center;
+  padding: 28px 16px;
+  border-radius: 1rem;
+  background: rgba(255,255,255,.03);
+}
+.lbNoResults .title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+.lbNoResults .sub {
+  margin-top: 6px;
+  opacity: .7;
+  font-size: .95rem;
+}
   </style>
 </head>
 
@@ -391,13 +407,35 @@ html { scrollbar-gutter: stable; }
                 <div class="flex items-center justify-between gap-3 flex-wrap">
                   <div class="text-xl font-bold">Leaderboard</div>
 
-                  <div class="flex items-center gap-2">
-                    <button id="lbRefreshBtn" class="btn btn-outline btn-sm">
-                      <span id="lbRefreshSpin" class="loading loading-spinner loading-xs hidden"></span>
-                      <span id="lbRefreshText">Refresh</span>
-                    </button>
-                    <div id="updated" class="text-sm opacity-70"></div>
-                  </div>
+                  <div class="flex items-center gap-2 flex-wrap">
+
+  <!-- Search -->
+  <div class="relative">
+    <input
+      id="lbSearch"
+      type="text"
+      class="input input-bordered input-sm w-64 max-w-[70vw] pr-9"
+      placeholder="Search player…"
+      autocomplete="off"
+    />
+    <button
+      id="lbSearchClear"
+      class="btn btn-ghost btn-xs absolute right-1 top-1/2 -translate-y-1/2 hidden"
+      type="button"
+      aria-label="Clear search"
+    >
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+
+  <!-- Refresh -->
+  <button id="lbRefreshBtn" class="btn btn-outline btn-sm">
+    <span id="lbRefreshSpin" class="loading loading-spinner loading-xs hidden"></span>
+    <span id="lbRefreshText">Refresh</span>
+  </button>
+
+  <div id="updated" class="text-sm opacity-70"></div>
+</div>
                 </div>
 
                 <div id="lbLoadingBox" class="mt-3 bg-base-300 rounded-xl px-4 py-4">
@@ -797,6 +835,11 @@ let lastLeaderboardHash = "";
 /** Leaderboard refresh state **/
 let lbBusy = false;
 
+/** SEARCH GLOBALS RIGHT HERE **/
+let lbQuery = "";          
+let lbQueryDebounce = null;
+let meDisplayName = "";    
+
 /** Poll state **/
 const POLL_PAGE_SIZE = 5;
 let pollPage = 1;
@@ -1102,40 +1145,86 @@ function renderLeaderboard() {
   if (!el) return;
   el.innerHTML = "";
 
-  const pages = Math.max(1, Math.ceil(lastLeaderboardData.length / PAGE_SIZE));
+  const q = (lbQuery || "").trim().toLowerCase();
+
+  // base list (entire board)
+  const base = Array.isArray(lastLeaderboardData) ? lastLeaderboardData : [];
+
+  // filter: CONTAINS (case-insensitive)
+  const list = q
+    ? base.filter(p => {
+        const name = String(p.display_name || p.twitch_login || "").toLowerCase();
+        return name.includes(q);
+      })
+    : base;
+
+  const pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
   lbPage = Math.min(Math.max(1, lbPage), pages);
 
+  // No results message
+  if (list.length === 0) {
+    el.innerHTML = `
+      <div class="lbNoResults">
+        <div class="title">No players found</div>
+        <div class="sub">for “${escapeHtml(lbQuery)}”</div>
+      </div>
+    `;
+    safeText("lbPageInfo", `Page 1 of 1`);
+    const prev = $("lbPrev");
+    const next = $("lbNext");
+    if (prev) prev.disabled = true;
+    if (next) next.disabled = true;
+    return;
+  }
+
   const start = (lbPage - 1) * PAGE_SIZE;
-  const slice = lastLeaderboardData.slice(start, start + PAGE_SIZE);
+  const slice = list.slice(start, start + PAGE_SIZE);
 
   slice.forEach((p, i) => {
-    const rank = start + i + 1;
+    // IMPORTANT: rank is based on position in the FULL board (not filtered page)
+    // so ranks stay correct like you asked (#2, #57, etc.)
+    const globalIndex = q ? base.indexOf(p) : (start + i);
+    const rank = globalIndex + 1;
+
     const name = p.display_name || p.twitch_login || "";
     const pts = (p.points ?? 0);
 
-el.innerHTML += `
-  <div class="lbRow flex flex-col sm:flex-row sm:items-center sm:justify-between bg-base-300 rounded-xl px-4 py-3 ${
-    rank === 1 ? "lbTop1" : rank === 2 ? "lbTop2" : rank === 3 ? "lbTop3rd" : ""
-  }">
-    <div class="lbLeft min-w-0 flex items-center gap-3">
-      ${topIcon(rank)}
-      <div class="font-bold">#${rank}</div>
-      <div class="lbName truncate">${escapeHtml(name)}</div>
-    </div>
+    // Only highlight "me" on General, by display name match (good enough for now)
+    const isMe =
+      currentBoard === "general" &&
+      !!getToken() &&
+      meDisplayName &&
+      String(name).toLowerCase() === String(meDisplayName).toLowerCase();
 
-    <div class="lbPoints mt-2 sm:mt-0 self-start sm:self-auto">
-      <div class="badge badge-primary text-lg">${pts}</div>
-    </div>
-  </div>
-`;
+    const meClass = isMe ? "outline outline-2 outline-primary/40" : "";
+
+    el.innerHTML += `
+      <div class="lbRow flex items-center justify-between bg-base-300 rounded-xl px-4 py-3 ${meClass} ${
+        rank === 1 ? "lbTop1" : rank === 2 ? "lbTop2" : rank === 3 ? "lbTop3rd" : ""
+      }">
+        <div class="lbLeft min-w-0">
+          <div class="lbNameRow">
+            ${topIcon(rank)}
+            <div class="font-bold">#${rank}</div>
+            <div class="lbName">${escapeHtml(name)}</div>
+          </div>
+
+          <div class="lbPoints">
+            <div class="badge badge-primary text-lg">${pts}</div>
+          </div>
+        </div>
+      </div>
+    `;
   });
 
   safeText("lbPageInfo", `Page ${lbPage} of ${pages}`);
 
   const prev = $("lbPrev");
   const next = $("lbNext");
-  if (prev) prev.disabled = lbPage <= 1;
-  if (next) next.disabled = lbPage >= pages;
+  const disableArrows = pages <= 1;
+
+  if (prev) prev.disabled = disableArrows || lbPage <= 1;
+  if (next) next.disabled = disableArrows || lbPage >= pages;
 }
 
 async function refreshLeaderboard({showOverlay=false, quietIfUnchanged=true, overlayText="Loading…"} = {}) {
@@ -1224,6 +1313,7 @@ async function refreshMe({mode="auto"} = {}) {
     if (!me) throw new Error("Could not read Twitch user.");
 
     safeText("meName", me.display_name);
+    meDisplayName = String(me.display_name || "");
 
     const g = await apiGet("me", {
       twitch_user_id: me.id,
@@ -1597,6 +1687,33 @@ function wireButtons(){
     refreshPoll({ manual:true });
   });
 
+    // Leaderboard search
+  on("lbSearch", "input", (e) => {
+    const val = e.target.value || "";
+    lbQuery = val;
+
+    // show/hide clear X
+    const c = $("lbSearchClear");
+    if (c) c.classList.toggle("hidden", !lbQuery.trim());
+
+    // debounce so it doesn't spam renders while typing
+    if (lbQueryDebounce) clearTimeout(lbQueryDebounce);
+    lbQueryDebounce = setTimeout(() => {
+      lbPage = 1;      // typing resets to page 1
+      renderLeaderboard();
+    }, 120);
+  });
+
+  on("lbSearchClear", "click", () => {
+    const input = $("lbSearch");
+    if (input) input.value = "";
+    lbQuery = "";
+    const c = $("lbSearchClear");
+    if (c) c.classList.add("hidden");
+    lbPage = 1;
+    renderLeaderboard();
+  });
+
   // Current Tournament modal open/close
   on("ctBtn", "click", async () => {
     openCtModal();
@@ -1611,25 +1728,36 @@ function wireButtons(){
     setActiveTab("tab_prizepool");
   });
 
-  // Leaderboard refresh button (refresh leaderboard + account at the same time)
-  on("lbRefreshBtn", "click", async () => {
-    if (lbBusy) return;
-    lbBusy = true;
+// Leaderboard refresh button (refresh leaderboard + account at the same time)
+on("lbRefreshBtn", "click", async () => {
+  if (lbBusy) return;
+  lbBusy = true;
 
-    setLbRefreshBtnLoading(true);
-    setLbOverlay(true, "Refreshing…");
+  /* 🔽 E SECTION GOES RIGHT HERE 🔽 */
+  // Manual refresh clears search
+  const input = $("lbSearch");
+  if (input) input.value = "";
+  lbQuery = "";
+  const c = $("lbSearchClear");
+  if (c) c.classList.add("hidden");
+  lbPage = 1;
 
-    try {
-      await Promise.all([
-        refreshLeaderboard({ showOverlay:false, quietIfUnchanged:false }),
-        refreshMe({ mode: "auto" }) // <-- fix: pass the right argument shape
-      ]);
-    } finally {
-      setLbOverlay(false);
-      setLbRefreshBtnLoading(false);
-      lbBusy = false;
-    }
-  });
+  /* 🔼 END OF E SECTION 🔼 */
+
+  setLbRefreshBtnLoading(true);
+  setLbOverlay(true, "Refreshing…");
+
+  try {
+    await Promise.all([
+      refreshLeaderboard({ showOverlay:false, quietIfUnchanged:false }),
+      refreshMe({ mode: "auto" })
+    ]);
+  } finally {
+    setLbOverlay(false);
+    setLbRefreshBtnLoading(false);
+    lbBusy = false;
+  }
+});
 }
 /** ====== Init (wrapped so mobile won't race/half-load) ====== **/
 document.addEventListener("DOMContentLoaded", async () => {
