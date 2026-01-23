@@ -119,7 +119,7 @@
   align-self: center;
   flex: 0 0 auto;
 }
-    /* ===== Mobile: stack leaderboard row (points under name) ===== */
+/* ===== Mobile: stack leaderboard row (points under name) ===== */
 @media (max-width: 640px) {
   .lbRow {
     align-items: flex-start !important;
@@ -127,8 +127,10 @@
   }
 
   .lbLeft {
-    min-width: 0; /* allows truncation */
-    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;   /* 🔥 force vertical stacking again */
+    min-width: 0;
+    width: 100%;
   }
 
   .lbNameRow {
@@ -139,21 +141,21 @@
   }
 
   .lbName {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;      /* 🔥 allow wrapping on mobile */
+    overflow: visible;        /* 🔥 no ellipsis */
+    text-overflow: unset;
+    line-height: 1.25;
   }
 
   .lbPoints {
-    margin-left: 44px; /* lines up under the name after the icon+# */
+    margin-left: 44px;        /* keeps it lined under name */
     margin-top: 6px;
     align-self: flex-start;
   }
 
   /* Slightly smaller pill on mobile so it feels cleaner */
   .lbPoints .badge {
-    font-size: 1rem; /* text-base-ish */
+    font-size: 1rem;
     padding-left: 14px;
     padding-right: 14px;
   }
