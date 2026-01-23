@@ -204,6 +204,39 @@ html { scrollbar-gutter: stable; }
   opacity: .7;
   font-size: .95rem;
 }
+    /* ===== Mobile: top controls wrap nicely (Current Tournament + Login, dropdown below) ===== */
+@media (max-width: 640px) {
+  /* the container that holds: Current Tournament button + dropdown + login */
+  #lbTopControls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  /* Make Current Tournament + Login share the first row */
+  #ctBtn {
+    order: 1;
+    flex: 1 1 auto;      /* takes leftover space */
+    min-width: 160px;
+  }
+
+  #authBtn {
+    order: 2;
+    flex: 0 0 auto;      /* stays tight */
+    white-space: nowrap; /* prevents squeezing weirdly */
+  }
+
+  /* Dropdown becomes the full-width second row */
+  #lbBoardSelectWrap {
+    order: 3;
+    width: 100%;
+  }
+
+  #lbBoardSelect {
+    width: 100%;
+  }
+}
   </style>
 </head>
 
