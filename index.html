@@ -206,34 +206,33 @@ html { scrollbar-gutter: stable; }
 }
     /* ===== Mobile: top controls wrap nicely (Current Tournament + Login, dropdown below) ===== */
 @media (max-width: 640px) {
-  /* the container that holds: Current Tournament button + dropdown + login */
-  #lbTopControls {
+
+  /* The existing container that already holds the 3 controls */
+  .flex.justify-end.-mt-2 > .flex {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     align-items: center;
-  }
-
-  /* Make Current Tournament + Login share the first row */
-  #ctBtn {
-    order: 1;
-    flex: 1 1 auto;      /* takes leftover space */
-    min-width: 160px;
-  }
-
-  #authBtn {
-    order: 2;
-    flex: 0 0 auto;      /* stays tight */
-    white-space: nowrap; /* prevents squeezing weirdly */
-  }
-
-  /* Dropdown becomes the full-width second row */
-  #lbBoardSelectWrap {
-    order: 3;
     width: 100%;
   }
 
-  #lbBoardSelect {
+  /* Current Tournament button — left side, first row */
+  #ctBtn {
+    order: 1;
+    flex: 1 1 auto;
+    min-width: 160px;
+  }
+
+  /* Twitch login button — right side, first row */
+  #authBtn {
+    order: 2;
+    margin-left: auto;     /* push to the far right */
+    white-space: nowrap;
+  }
+
+  /* Leaderboard dropdown — full width, second row */
+  #boardSelect {
+    order: 3;
     width: 100%;
   }
 }
