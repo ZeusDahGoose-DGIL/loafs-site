@@ -204,6 +204,30 @@ html { scrollbar-gutter: stable; }
   opacity: .7;
   font-size: .95rem;
 }
+    /* ===== Leaderboard Avatars ===== */
+.lbAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.12);
+}
+
+.lbAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lbAvatar i {
+  font-size: 14px;
+  opacity: .7;
+}
   </style>
 </head>
 
@@ -930,6 +954,23 @@ function topIcon(rank) {
   if (rank === 3) return '<i class="fa-solid fa-medal text-orange-400"></i>';
   return '<i class="fa-solid fa-user opacity-60"></i>';
 }
+  
+  function avatarHtml_(url, name) {
+  const safeName = escapeHtml(name || "");
+  const safeUrl = (url && String(url).trim() !== "") ? String(url).trim() : "";
+  if (!safeUrl) {
+    return `
+      <div class="lbAvatar bg-base-300">
+        <i class="fa-solid fa-user"></i>
+      </div>
+    `;
+  }
+  return `
+    <div class="lbAvatar">
+      <img src="${escapeHtml(safeUrl)}" alt="${safeName}" loading="lazy" referrerpolicy="no-referrer" />
+    </div>
+  `;
+}
 
 function apiGet(route, params = {}) {
   const u = new URL(API_BASE);
@@ -1242,6 +1283,7 @@ function renderLeaderboard() {
           <div class="lbNameRow">
             ${topIcon(rank)}
             <div class="font-bold">#${rank}</div>
+            ${board === "general" ? avatarHtml_(row.avatar_url, name) : ""}
             <div class="lbName">${escapeHtml(name)}</div>
           </div>
 
@@ -1355,6 +1397,7 @@ async function refreshMe({mode="auto"} = {}) {
       twitch_user_id: me.id,
       twitch_login: me.login,
       display_name: me.display_name,
+      avatar_url: me.profile_image_url || "",
       board: "general"
     });
 
