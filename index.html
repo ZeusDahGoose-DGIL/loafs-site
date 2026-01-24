@@ -973,10 +973,15 @@ function topIcon(rank) {
 }
 
 function apiGet(route, params = {}) {
-  const u = new URL(API_BASE);
-  u.searchParams.set("route", route);
-  Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
-  return fetch(u.toString(), { cache: "no-store" }).then(r => r.json());
+  const q = new URLSearchParams({ route, ...params });
+  const url = `${API_BASE}?${q.toString()}`;
+
+  return fetch(url, { cache: "no-store" })
+    .then(async (r) => {
+      const t = await r.text();
+      try { return JSON.parse(t); }
+      catch { return { ok:false, error:"Bad JSON response", raw:t, url }; }
+    });
 }
 
 function apiPost(json){
