@@ -1296,7 +1296,7 @@ function renderLeaderboard() {
           <div class="lbNameRow">
             ${topIcon(rank)}
             <div class="font-bold">#${rank}</div>
-            ${board === "general" ? avatarHtml_(row.avatar_url, name) : ""}
+            ${currentBoard === "general" ? avatarHtml_(p.avatar_url, name) : ""}
             <div class="lbName">${escapeHtml(name)}</div>
           </div>
 
@@ -1746,6 +1746,7 @@ function wireAuth(){
       updateAuthButtonUI();
       setStatus("Logged out.");
       refreshMe();
+      refreshLeaderboard({quietIfUnchanged:false});
       return;
     }
 
