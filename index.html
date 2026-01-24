@@ -228,6 +228,15 @@ html { scrollbar-gutter: stable; }
   font-size: 14px;
   opacity: .7;
 }
+    /* ===== Fix long usernames overflowing leaderboard rows ===== */
+.lbName {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Flexbox safety so rows can shrink properly */
+.lbNameRow { min-width: 0; }
+.lbLeft { min-width: 0; }
   </style>
 </head>
 
