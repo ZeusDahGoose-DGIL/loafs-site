@@ -261,6 +261,20 @@ html { scrollbar-gutter: stable; }
 .shopPrice {
   font-weight: 800;
 }
+
+    /* ===== Shop lists scroll safely (GREEN) ===== */
+.shopList{
+  max-height: 56vh;          /* keeps it inside modal */
+  overflow-y: auto;
+  padding-right: 6px;        /* room for scrollbar */
+}
+
+/* optional: nicer scrollbar */
+.shopList::-webkit-scrollbar { width: 10px; }
+.shopList::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.10);
+  border-radius: 999px;
+}
   </style>
 </head>
 
@@ -918,50 +932,68 @@ html { scrollbar-gutter: stable; }
   <!-- backdrop -->
   <div id="shopBackdrop" class="absolute inset-0 bg-black/60"></div>
 
-  <!-- modal card -->
+  <!-- modal -->
   <div class="absolute inset-0 flex items-center justify-center p-4">
-    <div class="card bg-base-200 shadow-xl w-full max-w-3xl max-h-[85vh] overflow-auto relative">
-      <div class="card-body space-y-4">
+    <div class="card bg-base-200 shadow-xl w-full max-w-5xl max-h-[88vh] overflow-hidden relative">
+      <!-- HEADER -->
+      <div class="px-6 pt-5 pb-4 border-b border-white/5 flex items-start justify-between gap-3">
+        <div>
+          <div class="text-2xl font-extrabold flex items-center gap-2">
+            <i class="fa-solid fa-cart-shopping"></i>
+            <span>Loaf Shop</span>
+          </div>
+          <div class="opacity-70 text-sm mt-1">
+            Redeem Loafs for stuff I enable per tournament.
+          </div>
+        </div>
 
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="text-2xl font-extrabold flex items-center gap-2">
-              <i class="fa-solid fa-cart-shopping"></i>
-              <span>Loaf Shop</span>
+        <!-- RIGHT SIDE (RED): balance + close -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 bg-base-300 rounded-xl px-3 py-2">
+            <span class="text-lg">🍞</span>
+            <div class="text-sm font-bold">
+              <span class="opacity-80">Loaf Balance:</span>
+              <span id="shopBalanceText" class="ml-1">0</span>
             </div>
-            <div class="opacity-70 text-sm">Redeem Loafs for stuff I enable per tournament.</div>
           </div>
 
-          <button id="shopClose" class="btn btn-sm btn-ghost">
+          <button id="shopClose" class="btn btn-sm btn-ghost border border-white/10 rounded-xl">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
+      </div>
 
-        <!-- Balance -->
-        <div class="bg-base-300 rounded-xl p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div class="font-bold opacity-80">Loaf Balance</div>
-          <div class="prizePoolAmount text-2xl flex items-center gap-2">
-            <span>🍞</span>
-            <span id="shopBalance">—</span>
+      <!-- BODY -->
+      <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- LEFT SIDEBAR (BLUE): info + vertical tabs -->
+        <div class="lg:col-span-3 space-y-4">
+          <div class="text-xs opacity-70 leading-snug">
+            (Some Redeems will be enabled only when announced for a tournament. You must logged in to use your Loaf Balance)
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <button id="shopTab_items" class="btn btn-primary justify-start">Items</button>
+            <button id="shopTab_tourney" class="btn btn-ghost justify-start">Tournament</button>
+            <button id="shopTab_cosmetic" class="btn btn-ghost justify-start">Cosmetic</button>
           </div>
         </div>
 
-        <!-- Tabs -->
-        <div class="tabsScroll">
-          <div class="tabs tabs-boxed min-w-max">
-            <a id="shopTab_items" class="tab tab-active">Items</a>
-            <a id="shopTab_tourney" class="tab">Tournament</a>
-            <a id="shopTab_cosmetic" class="tab">Cosmetic</a>
-            <a id="shopTab_info" class="tab">Info</a>
+        <!-- MAIN CONTENT (GREEN): scroll list area -->
+        <div class="lg:col-span-9">
+          <div class="bg-base-300 rounded-2xl p-4">
+            <div id="shopPanel_items" class="">
+              <div id="shopList_items" class="shopList"></div>
+            </div>
+
+            <div id="shopPanel_tourney" class="hidden">
+              <div id="shopList_tourney" class="shopList"></div>
+            </div>
+
+            <div id="shopPanel_cosmetic" class="hidden">
+              <div id="shopList_cosmetic" class="shopList"></div>
+            </div>
           </div>
         </div>
-
-        <!-- Content -->
-        <div id="shopPanel_items" class="space-y-3"></div>
-        <div id="shopPanel_tourney" class="space-y-3 hidden"></div>
-        <div id="shopPanel_cosmetic" class="space-y-3 hidden"></div>
-        <div id="shopPanel_info" class="space-y-3 hidden"></div>
-
       </div>
     </div>
   </div>
@@ -1854,7 +1886,7 @@ async function renderShop(){
       }
     } catch {}
   } else {
-    if (balEl) balEl.textContent = "Login";
+    if (balEl) balEl.textContent = "(Login to use)";
   }
 
   // panels
@@ -2052,7 +2084,7 @@ on("lbRefreshBtn", "click", async () => {
   }
 });
 
-    // Shop modal open/close
+  // ===== Shop modal open/close =====
   const openShop = () => {
     safeClassToggle("shopModal", "hidden", false);
     document.body.style.overflow = "hidden";
@@ -2066,24 +2098,29 @@ on("lbRefreshBtn", "click", async () => {
 
   on("shopClose", "click", closeShop);
   on("shopBackdrop", "click", closeShop);
-
-  // Whole card clickable
   on("shopCard", "click", openShop);
 
-  // Shop tabs
+  // ===== Shop tabs (vertical) =====
   const shopTabs = [
     { tab: "shopTab_items", panel: "shopPanel_items" },
     { tab: "shopTab_tourney", panel: "shopPanel_tourney" },
-    { tab: "shopTab_cosmetic", panel: "shopPanel_cosmetic" },
-    { tab: "shopTab_info", panel: "shopPanel_info" }
+    { tab: "shopTab_cosmetic", panel: "shopPanel_cosmetic" }
   ];
 
   function setShopTab(tabId){
     shopTabs.forEach(t => {
       const tabEl = $(t.tab);
       const panelEl = $(t.panel);
-      if (tabEl) tabEl.classList.toggle("tab-active", t.tab === tabId);
-      if (panelEl) panelEl.classList.toggle("hidden", t.tab !== tabId);
+
+      const active = (t.tab === tabId);
+
+      if (panelEl) panelEl.classList.toggle("hidden", !active);
+
+      // button styling
+      if (tabEl){
+        tabEl.classList.toggle("btn-primary", active);
+        tabEl.classList.toggle("btn-ghost", !active);
+      }
     });
   }
 
