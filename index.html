@@ -275,6 +275,75 @@ html { scrollbar-gutter: stable; }
   background: rgba(255,255,255,.10);
   border-radius: 999px;
 }
+
+/* ===== Shop Tabs: always bordered ===== */
+.shopTabBtn{
+  width: 100%;
+  justify-content: flex-start;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.03);
+}
+
+.shopTabBtn:hover{
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.18);
+}
+
+.shopTabBtn.shopTabActive{
+  border-color: rgba(255,255,255,.28);
+  background: rgba(99,102,241,.20); /* soft indigo-ish, matches your vibe */
+  box-shadow: 0 0 0 1px rgba(99,102,241,.15);
+}
+
+    /* ===== Shop falling loaf FX (right pane only) ===== */
+#shopRedeemsPane{
+  position: relative;
+  overflow: hidden;
+}
+
+#shopRedeemsFx{
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;          /* extra safety */
+}
+
+/* content above the FX */
+#shopRedeemsContent{
+  position: relative;
+  z-index: 1;
+}
+
+/* individual loaf */
+.shopLoaf{
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  opacity: .12;              /* transparent */
+  font-size: 30px;           /* tweak size here */
+  transform: translateX(-50%);
+  will-change: transform, top, opacity;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.25));
+  animation-name: shopLoafFall;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  z-index: 0;                /* behind */
+}
+
+@keyframes shopLoafFall{
+  0%{
+    transform: translateX(-50%) rotate(0deg);
+    top: -60px;
+    opacity: 0;
+  }
+  10%{ opacity: .12; }
+  100%{
+    transform: translateX(calc(-50% + var(--drift))) rotate(var(--spin));
+    top: 115%;
+    opacity: 0;
+  }
+}
   </style>
 </head>
 
@@ -972,29 +1041,36 @@ html { scrollbar-gutter: stable; }
           </div>
 
           <div class="flex flex-col gap-2">
-            <button id="shopTab_items" class="btn btn-primary justify-start">Items</button>
-            <button id="shopTab_tourney" class="btn btn-ghost justify-start">Tournament</button>
-            <button id="shopTab_cosmetic" class="btn btn-ghost justify-start">Cosmetic</button>
+            <button id="shopTab_items" class="btn btn-sm shopTabBtn shopTabActive">Items</button>
+            <button id="shopTab_tourney" class="btn btn-sm shopTabBtn">Tournament</button>
+            <button id="shopTab_cosmetic" class="btn btn-sm shopTabBtn">Cosmetic</button>
           </div>
         </div>
 
-        <!-- MAIN CONTENT (GREEN): scroll list area -->
-        <div class="lg:col-span-9">
-          <div class="bg-base-300 rounded-2xl p-4">
-            <div id="shopPanel_items" class="">
-              <div id="shopList_items" class="shopList"></div>
-            </div>
+     <!-- MAIN CONTENT (GREEN): scroll list area -->
+<div class="lg:col-span-9">
+  <div id="shopRedeemsPane" class="bg-base-300 rounded-2xl p-4 relative overflow-hidden">
 
-            <div id="shopPanel_tourney" class="hidden">
-              <div id="shopList_tourney" class="shopList"></div>
-            </div>
+    <!-- FX BEHIND CONTENT -->
+    <div id="shopRedeemsFx" aria-hidden="true"></div>
 
-            <div id="shopPanel_cosmetic" class="hidden">
-              <div id="shopList_cosmetic" class="shopList"></div>
-            </div>
-          </div>
-        </div>
+    <!-- CONTENT ABOVE FX -->
+    <div id="shopRedeemsContent" class="relative z-10">
+      <div id="shopPanel_items" class="">
+        <div id="shopList_items" class="shopList"></div>
       </div>
+
+      <div id="shopPanel_tourney" class="hidden">
+        <div id="shopList_tourney" class="shopList"></div>
+      </div>
+
+      <div id="shopPanel_cosmetic" class="hidden">
+        <div id="shopList_cosmetic" class="shopList"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
     </div>
   </div>
 </div>
@@ -1305,6 +1381,66 @@ function throwLoafs(){
     layer.appendChild(el);
     setTimeout(() => el.remove(), 750);
   }
+}
+
+  /** ====== SHOP FX (falling loafs behind redeems) ====== **/
+let shopFxTimer = null;
+
+function startShopFx(){
+  stopShopFx(); // safety
+
+  const fx = $("shopRedeemsFx");
+  const pane = $("shopRedeemsPane");
+  if (!fx || !pane) return;
+
+  const spawn = () => {
+    // if modal is hidden, don't spawn
+    const modal = $("shopModal");
+    if (!modal || modal.classList.contains("hidden")) return;
+
+    const w = pane.clientWidth || 600;
+
+    const el = document.createElement("div");
+    el.className = "shopLoaf";
+    el.textContent = "🍞";
+
+    // random x within pane
+    const x = Math.random() * w;
+    el.style.left = x + "px";
+
+    // slow drift + spin
+    const drift = (Math.random() * 120 - 60) + "px";  // -60..60
+    const spin  = (Math.random() * 220 - 110) + "deg"; // -110..110
+    el.style.setProperty("--drift", drift);
+    el.style.setProperty("--spin", spin);
+
+    // slow duration (eye friendly)
+    const dur = 9000 + Math.random() * 6000; // 9s..15s
+    el.style.animationDuration = dur + "ms";
+
+    // stagger start a bit
+    el.style.animationDelay = (Math.random() * 800) + "ms";
+
+    fx.appendChild(el);
+
+    // remove when done (prevents buildup)
+    el.addEventListener("animationend", () => el.remove(), { once: true });
+  };
+
+  // gentle spawn rate
+  shopFxTimer = setInterval(() => spawn(), 950 + Math.random() * 450);
+
+  // spawn a few immediately so it feels alive
+  for (let i = 0; i < 3; i++) spawn();
+}
+
+function stopShopFx(){
+  if (shopFxTimer) {
+    clearInterval(shopFxTimer);
+    shopFxTimer = null;
+  }
+  const fx = $("shopRedeemsFx");
+  if (fx) fx.innerHTML = "";
 }
 
 /** ====== TABS (show/hide panels) ====== **/
@@ -2085,16 +2221,20 @@ on("lbRefreshBtn", "click", async () => {
 });
 
   // ===== Shop modal open/close =====
-  const openShop = () => {
-    safeClassToggle("shopModal", "hidden", false);
-    document.body.style.overflow = "hidden";
-    renderShop(); // draws items + balance
-  };
+const openShop = async () => {
+  safeClassToggle("shopModal", "hidden", false);
+  document.body.style.overflow = "hidden";
 
-  const closeShop = () => {
-    safeClassToggle("shopModal", "hidden", true);
-    document.body.style.overflow = "";
-  };
+  await renderShop();  // ensure panels exist / are rendered
+  startShopFx();       // 🍞 start the background loop
+};
+
+const closeShop = () => {
+  safeClassToggle("shopModal", "hidden", true);
+  document.body.style.overflow = "";
+
+  stopShopFx();        // 🍞 stop + clear loaf elements
+};
 
   on("shopClose", "click", closeShop);
   on("shopBackdrop", "click", closeShop);
