@@ -344,6 +344,11 @@ html { scrollbar-gutter: stable; }
     opacity: 0;
   }
 }
+
+    .pixelNum{
+  font-family: "Press Start 2P", system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
   </style>
 </head>
 
@@ -1018,12 +1023,15 @@ html { scrollbar-gutter: stable; }
 
         <!-- RIGHT SIDE (RED): balance + close -->
         <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2 bg-base-300 rounded-xl px-3 py-2">
+          <div class="flex items-center gap-2 bg-base-300 rounded-xl px-4 py-3">
             <span class="text-lg">🍞</span>
-            <div class="text-sm font-bold">
-              <span class="opacity-80">Loaf Balance:</span>
-              <span id="shopBalance"></span>
-            </div>
+          <div class="text-base font-extrabold leading-tight">
+          <span class="opacity-80">Loaf Balance:</span>
+          <span class="inline-flex items-center gap-2 ml-1">
+          <span id="shopBalSpin" class="loading loading-spinner loading-sm hidden"></span>
+          <span id="shopBalance" class="pixelNum text-lg"></span>
+          </span>
+          </div>
           </div>
 
           <button id="shopClose" class="btn btn-sm btn-ghost border border-white/10 rounded-xl">
@@ -1041,7 +1049,7 @@ html { scrollbar-gutter: stable; }
           </div>
 
           <div class="flex flex-col gap-2">
-            <button id="shopTab_items" class="btn btn-sm shopTabBtn shopTabActive">Items</button>
+            <button id="shopTab_items" class="btn btn-sm shopTabBtn">Items</button>
             <button id="shopTab_tourney" class="btn btn-sm shopTabBtn">Tournament</button>
             <button id="shopTab_cosmetic" class="btn btn-sm shopTabBtn">Cosmetic</button>
           </div>
@@ -1143,6 +1151,11 @@ function escapeHtml(str) {
 }
 
 function setStatus(msg) { safeText("status", msg || ""); }
+
+  function setShopBalanceLoading(isLoading){
+  const spin = $("shopBalSpin");
+  if (spin) spin.classList.toggle("hidden", !isLoading);
+}
 
 function updateAuthButtonUI() {
   const btnText = $("authBtnText");
@@ -1998,31 +2011,42 @@ const SHOP_ITEMS = {
 async function renderShop(){
   // balance
   const balEl = $("shopBalance");
-  if (balEl) balEl.textContent = "—";
+  if (balEl) balEl.textContent = "";
 
-  // If logged in, pull balance from your existing /me route
-  if (getToken()){
+  // logged out
+  if (!getToken()){
+    setShopBalanceLoading(false);
+    if (balEl) balEl.textContent = "(Login to use)";
+  } else {
+    // show spinner while fetching
+    setShopBalanceLoading(true);
+    if (balEl) balEl.textContent = "";
+
     try {
       const r = await fetch("https://api.twitch.tv/helix/users", {
         headers: { "Authorization": "Bearer " + getToken(), "Client-Id": TWITCH_CLIENT_ID }
       });
-      if (r.ok){
-        const tj = await r.json();
-        const me = tj.data?.[0];
-        if (me){
-          const g = await apiGet("me", {
-            twitch_user_id: me.id,
-            twitch_login: me.login,
-            display_name: me.display_name,
-            avatar_url: me.profile_image_url || "",
-            board: "general"
-          });
-          if (balEl) balEl.textContent = String(g.points ?? 0);
-        }
-      }
-    } catch {}
-  } else {
-    if (balEl) balEl.textContent = "(Please Login to See)";
+
+      if (!r.ok) throw new Error("twitch_auth_failed");
+
+      const tj = await r.json();
+      const me = tj.data?.[0];
+      if (!me) throw new Error("no_me");
+
+      const g = await apiGet("me", {
+        twitch_user_id: me.id,
+        twitch_login: me.login,
+        display_name: me.display_name,
+        avatar_url: me.profile_image_url || "",
+        board: "general"
+      });
+
+      if (balEl) balEl.textContent = String(g.points ?? 0);
+    } catch (e) {
+      if (balEl) balEl.textContent = "(Login to use)";
+    } finally {
+      setShopBalanceLoading(false);
+    }
   }
 
   // panels
@@ -2225,6 +2249,7 @@ const openShop = async () => {
   safeClassToggle("shopModal", "hidden", false);
   document.body.style.overflow = "hidden";
 
+  setShopTab("shopTab_items");
   await renderShop();  // ensure panels exist / are rendered
   startShopFx();       // 🍞 start the background loop
 };
@@ -2247,22 +2272,20 @@ const closeShop = () => {
     { tab: "shopTab_cosmetic", panel: "shopPanel_cosmetic" }
   ];
 
-  function setShopTab(tabId){
-    shopTabs.forEach(t => {
-      const tabEl = $(t.tab);
-      const panelEl = $(t.panel);
+function setShopTab(tabId){
+  shopTabs.forEach(t => {
+    const tabEl = $(t.tab);
+    const panelEl = $(t.panel);
+    const active = (t.tab === tabId);
 
-      const active = (t.tab === tabId);
+    if (panelEl) panelEl.classList.toggle("hidden", !active);
 
-      if (panelEl) panelEl.classList.toggle("hidden", !active);
-
-      // button styling
-      if (tabEl){
-        tabEl.classList.toggle("btn-primary", active);
-        tabEl.classList.toggle("btn-ghost", !active);
-      }
-    });
-  }
+    // button styling (use YOUR CSS class)
+    if (tabEl){
+      tabEl.classList.toggle("shopTabActive", active);
+    }
+  });
+}
 
   shopTabs.forEach(t => {
     const el = $(t.tab);
