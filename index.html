@@ -2355,6 +2355,9 @@ el.innerHTML = `<span class="loading loading-spinner loading-lg"></span>`;
     const amt = Number(j.amount ?? 0);
     if (!Number.isFinite(amt)) throw new Error("Bad amount");
 
+    // wait for the pixel font BEFORE showing the number
+    await document.fonts.load('16px "Press Start 2P"');
+
     el.textContent = "$" + Math.round(amt).toString();
   } catch (e) {
     el.textContent = "—";
