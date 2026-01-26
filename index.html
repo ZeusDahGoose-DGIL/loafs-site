@@ -2325,28 +2325,29 @@ document.addEventListener("DOMContentLoaded", async () => {
   await refreshLeaderboard({quietIfUnchanged:false});
   await refreshMe();
   await refreshPoll({manual:false});
-  refreshPrizePool();
+  await refreshPrizePool();
 
   // auto refresh (quiet)
   setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
   setInterval(() => refreshMe({ mode: "auto" }), 30000);
   setInterval(() => refreshPoll({manual:false}), 30000);
-  setInterval(() => refreshPrizePool(), 30000);
+  setInterval(() => refreshPrizePool({ silent:true }), 30000);
 
   // Current Tournament button glow updater
   await refreshCurrentTournamentUI({silent:true});
   setInterval(() => refreshCurrentTournamentUI({silent:true}), 30000);
 });
 
-async function refreshPrizePool(){
+async function refreshPrizePool({ silent=false } = {}) {
   const el = $("prizePoolAmount");
   if (!el) return;
 
-  // Big centered loader immediately
-el.innerHTML = `<span class="loading loading-spinner loading-lg"></span>`;
-
-  // Force the browser to paint the spinner NOW (before fetch work)
-  await new Promise(requestAnimationFrame);
+  // Only show spinner for first/manual loads
+  if (!silent) {
+    el.innerHTML = `<span class="loading loading-spinner loading-lg"></span>`;
+    // Force paint so spinner appears immediately
+    await new Promise(requestAnimationFrame);
+  }
 
   try {
     const j = await apiGet("prize_pool", {});
@@ -2355,12 +2356,17 @@ el.innerHTML = `<span class="loading loading-spinner loading-lg"></span>`;
     const amt = Number(j.amount ?? 0);
     if (!Number.isFinite(amt)) throw new Error("Bad amount");
 
-    // wait for the pixel font BEFORE showing the number
+    // Ensure pixel font is loaded before showing number (prevents flicker)
     await document.fonts.load('16px "Press Start 2P"');
 
-    el.textContent = "$" + Math.round(amt).toString();
+    const nextText = "$" + Math.round(amt).toString();
+
+    // Silent mode: only change if different (prevents pointless reflows)
+    if (silent && el.textContent === nextText) return;
+
+    el.textContent = nextText;
   } catch (e) {
-    el.textContent = "—";
+    if (!silent) el.textContent = "—";
     console.log("Prize pool fetch failed:", e);
   }
 }
