@@ -2330,6 +2330,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   await refreshCurrentTournamentUI({silent:true});
   setInterval(() => refreshCurrentTournamentUI({silent:true}), 30000);
 });
+
+  async function refreshPrizePool(){
+  const el = $("prizePoolAmount");
+  if (!el) return;
+
+  // show loading state while pulling
+  el.innerHTML = `<span class="loading loading-spinner loading-sm"></span>`;
+
+  try {
+    // CHANGE THIS route name to whatever you made in Apps Script
+    const j = await apiGet("prize_pool", {});
+
+    if (!j || !j.ok) throw new Error(j?.error || "No ok response");
+
+    const amt = Number(j.amount ?? j.prize_pool ?? j.value ?? 0);
+    if (!Number.isFinite(amt)) throw new Error("Bad amount");
+
+    el.textContent = "$" + amt.toFixed(0);
+  } catch (e) {
+    // fallback
+    el.textContent = "—";
+    console.log("Prize pool fetch failed:", e);
+  }
+}
 </script>
 </body>
 </html>
