@@ -358,6 +358,14 @@ html { scrollbar-gutter: stable; }
   width: 100%;
   min-height: 72px; /* keeps it from feeling tiny */
 }
+
+/* Prevent prize pool box from resizing while loading */
+#prizePoolAmount {
+  min-height: 4.5rem;          /* matches your big number height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
   </style>
 </head>
 
@@ -2335,11 +2343,7 @@ async function refreshPrizePool(){
   if (!el) return;
 
   // Big centered loader immediately
-  el.innerHTML = `
-    <span class="inline-flex w-full items-center justify-center min-h-[72px]">
-      <span class="loading loading-spinner loading-lg"></span>
-    </span>
-  `;
+el.innerHTML = `<span class="loading loading-spinner loading-lg"></span>`;
 
   // Force the browser to paint the spinner NOW (before fetch work)
   await new Promise(requestAnimationFrame);
