@@ -664,8 +664,8 @@ html { scrollbar-gutter: stable; }
               <div class="opacity-80">Current Prize Pool</div>
             </div>
 
-            <div class="prizePoolAmount text-5xl sm:text-6xl font-extrabold">
-              $252
+            <div id="prizePoolAmount" class="prizePoolAmount text-5xl sm:text-6xl font-extrabold">
+            —
             </div>
 
             <div class="text-sm opacity-70">
@@ -1289,6 +1289,16 @@ async function fetchCurrentTournament(){
   // if your route is named differently in Apps Script, this is the only line you change:
   const j = await apiGet("current_tournament", {});
   return j;
+}
+
+  async function refreshPrizePool(){
+  const el = $("prizePoolAmount");
+  if (!el) return;
+
+  try {
+    const j = await apiGet("prize_pool", {});
+    if (j.ok) el.textContent = "$" + Number(j.amount || 0);
+  } catch {}
 }
 
 async function refreshCurrentTournamentUI({silent=false} = {}){
@@ -2308,11 +2318,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   await refreshLeaderboard({quietIfUnchanged:false});
   await refreshMe();
   await refreshPoll({manual:false});
+  await refreshPrizePool();
 
   // auto refresh (quiet)
   setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
   setInterval(() => refreshMe({ mode: "auto" }), 30000);
   setInterval(() => refreshPoll({manual:false}), 30000);
+  setInterval(() => refreshPrizePool(), 30000);
 
   // Current Tournament button glow updater
   await refreshCurrentTournamentUI({silent:true});
