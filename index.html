@@ -1291,16 +1291,6 @@ async function fetchCurrentTournament(){
   return j;
 }
 
-  async function refreshPrizePool(){
-  const el = $("prizePoolAmount");
-  if (!el) return;
-
-  try {
-    const j = await apiGet("prize_pool", {});
-    if (j.ok) el.textContent = "$" + Number(j.amount || 0);
-  } catch {}
-}
-
 async function refreshCurrentTournamentUI({silent=false} = {}){
   const btn = $("ctBtn");
   const dot = $("ctDot");
@@ -2318,7 +2308,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await refreshLeaderboard({quietIfUnchanged:false});
   await refreshMe();
   await refreshPoll({manual:false});
-  await refreshPrizePool();
+  refreshPrizePool();
 
   // auto refresh (quiet)
   setInterval(() => refreshLeaderboard({quietIfUnchanged:true}), 25000);
@@ -2331,25 +2321,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   setInterval(() => refreshCurrentTournamentUI({silent:true}), 30000);
 });
 
-  async function refreshPrizePool(){
+async function refreshPrizePool(){
   const el = $("prizePoolAmount");
   if (!el) return;
 
-  // show loading state while pulling
+  // show loading immediately
   el.innerHTML = `<span class="loading loading-spinner loading-sm"></span>`;
 
-  try {
-    // CHANGE THIS route name to whatever you made in Apps Script
-    const j = await apiGet("prize_pool", {});
+  // IMPORTANT: let the browser paint the spinner now
+  await new Promise(requestAnimationFrame);
 
+  try {
+    const j = await apiGet("prize_pool", {});
     if (!j || !j.ok) throw new Error(j?.error || "No ok response");
 
-    const amt = Number(j.amount ?? j.prize_pool ?? j.value ?? 0);
+    const amt = Number(j.amount ?? 0);
     if (!Number.isFinite(amt)) throw new Error("Bad amount");
 
-    el.textContent = "$" + amt.toFixed(0);
+    el.textContent = "$" + Math.round(amt).toString();
   } catch (e) {
-    // fallback
     el.textContent = "—";
     console.log("Prize pool fetch failed:", e);
   }
